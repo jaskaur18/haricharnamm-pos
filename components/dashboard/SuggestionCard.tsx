@@ -18,10 +18,16 @@ export function SuggestionCard({
   return (
     <SurfaceCard gap="$2.5" flex={1} style={{ minWidth: 280 }}>
       <XStack items="center" gap="$2">
-        <YStack rounded="$3" p="$1.5" opacity={0.15} style={{ backgroundColor: accentColor }}>
-          <Icon size={16} color={accentColor} />
+        <YStack
+          items="center"
+          justify="center"
+          rounded="$10"
+          p="$3"
+          bg="$color3"
+        >
+          <Icon size={20} color={accentColor} />
         </YStack>
-        <Paragraph fontSize="$4" fontWeight="700">
+        <Paragraph fontSize="$5" fontWeight="800">
           {title}
         </Paragraph>
       </XStack>
@@ -29,10 +35,10 @@ export function SuggestionCard({
       {rows === undefined ? (
         <XStack items="center" gap="$2">
           <Spinner size="small" />
-          <Paragraph color="$color7" fontSize="$2">Loading…</Paragraph>
+          <Paragraph color="$color8" fontSize="$2">Loading…</Paragraph>
         </XStack>
       ) : rows.length === 0 ? (
-        <Paragraph color="$color7" fontSize="$2">{emptyLabel}</Paragraph>
+        <Paragraph color="$color8" fontSize="$2">{emptyLabel}</Paragraph>
       ) : (
         <YStack gap="$1">
           {rows.slice(0, 3).map((row, index) => (
@@ -49,7 +55,7 @@ export function SuggestionCard({
                 <Paragraph color="$color11" fontSize="$2" fontWeight="600" numberOfLines={1}>
                   {row.productName ?? row.returnCode ?? 'Item'}
                 </Paragraph>
-                <Paragraph color="$color7" fontSize="$1" numberOfLines={1}>
+                <Paragraph color="$color8" fontSize="$1" numberOfLines={1}>
                   {row.displayCode ?? row.productCode ?? row.saleCode ?? ''}
                   {row.variantLabel ? ` · ${row.variantLabel}` : ''}
                 </Paragraph>
@@ -61,12 +67,12 @@ export function SuggestionCard({
                   </Paragraph>
                 ) : null}
                 {typeof row.growthRate === 'number' ? (
-                  <Paragraph color="#86EFAC" fontSize="$2" fontWeight="700">
+                  <Paragraph color="$green10" fontSize="$2" fontWeight="700">
                     +{row.growthRate}%
                   </Paragraph>
                 ) : null}
                 {row.createdAt ? (
-                  <Paragraph color="$color7" fontSize="$1">
+                  <Paragraph color="$color8" fontSize="$1">
                     {formatDate(row.createdAt)}
                   </Paragraph>
                 ) : null}

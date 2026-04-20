@@ -91,15 +91,15 @@ export function slugify(value: string) {
 }
 
 export function buildProductCode(sequenceNumber: number) {
-  return `HC-P-${String(sequenceNumber).padStart(6, "0")}`;
+  return `HC-${sequenceNumber}`;
 }
 
 export function buildSaleCode(sequenceNumber: number) {
-  return `HC-S-${String(sequenceNumber).padStart(6, "0")}`;
+  return `HS-${sequenceNumber}`;
 }
 
 export function buildReturnCode(sequenceNumber: number) {
-  return `HC-R-${String(sequenceNumber).padStart(6, "0")}`;
+  return `HR-${sequenceNumber}`;
 }
 
 export function makeSearchText(parts: Array<string | null | undefined>) {

@@ -756,3 +756,64 @@ export const createReturn = mutation({
     };
   },
 });
+
+export const catalogProductDetails = query({
+  args: { productId: v.id("products") },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product) return null;
+
+    const variants = await ctx.db
+      .query("productVariants")
+      .withIndex("by_productId", (q) => q.eq("productId", args.productId))
+      .collect();
+
+    const serializedVariants = await Promise.all(
+      variants.map(async (v) => {
+        const il = await ctx.db
+          .query("inventoryLevels")
+          .withIndex("by_variantId", (q) => q.eq("variantId", v._id))
+          .unique();
+        return {
+          _id: v._id,
+          label: v.label,
+          displayCode: v.displayCode,
+          optionSummary: v.optionSummary,
+          salePrice: v.salePrice,
+          reorderThreshold: v.reorderThreshold,
+          attributes: v.attributes,
+          onHand: il?.onHand ?? 0,
+        };
+      }),
+    );
+
+    return {
+      _id: product._id,
+      name: product.name,
+      description: product.description,
+      brandCopy: product.brandCopy,
+      merchandisingTags: product.merchandisingTags,
+      productCode: product.productCode,
+      variants: serializedVariants,
+    };
+  },
+});
+
+export const productMediaGallery = query({
+  args: { productId: v.id("products") },
+  handler: async (ctx, args) => {
+    const mediaRows = await ctx.db
+      .query("productMedia")
+      .withIndex("by_productId_and_sortOrder", (q) => q.eq("productId", args.productId))
+      .collect();
+
+    const result = [];
+    for (const row of mediaRows) {
+      const url = await ctx.storage.getUrl(row.storageId);
+      if (url) {
+        result.push({ ...row, url });
+      }
+    }
+    return result;
+  },
+});

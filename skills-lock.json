@@ -30,6 +30,11 @@
       "source": "get-convex/agent-skills",
       "sourceType": "github",
       "computedHash": "e719d31d1ab0d19ca7b942d1154d3ff436b5c156900eea9866c2aaeb910a1388"
+    },
+    "tamagui-v2": {
+      "source": "ramarivera/tamagui-skills",
+      "sourceType": "github",
+      "computedHash": "ba7274d65b299059bbf2a6f706b69a10e7624aff5fe4dfb4301d55be41c5a1e0"
     }
   }
 }

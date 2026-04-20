@@ -39,7 +39,7 @@ export function ProductImage({
     >
       <Sparkles size={size > 48 ? 18 : 14} color="$color8" />
       {label && size >= 48 ? (
-        <Paragraph color="$color7" fontSize={9} fontWeight="700" text="center" numberOfLines={1}>
+        <Paragraph color="$color7" fontSize={9} fontWeight="700" style={{ textAlign: 'center' }} numberOfLines={1}>
           {label.slice(0, 6)}
         </Paragraph>
       ) : null}

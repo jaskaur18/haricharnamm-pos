@@ -579,12 +579,80 @@ export const overview = query({
       .withIndex("by_key", (q) => q.eq("key", "dashboard"))
       .unique();
 
+    // Daily breakdown table
+    const { fromDate, toDate } = withDateBounds(args);
+    const rollups = await ctx.db
+      .query("dailySalesRollups")
+      .withIndex("by_businessDate", (q) =>
+        q.gte("businessDate", fromDate).lte("businessDate", toDate),
+      )
+      .take(120);
+    const dailyBreakdown = rollups.map((r) => ({
+      date: r.businessDate,
+      orders: r.orderCount,
+      revenue: r.grossRevenue,
+      returns: r.returnValue,
+      net: normalizeMoney(r.grossRevenue - r.returnValue),
+      discounts: normalizeMoney(r.lineDiscountTotal + r.orderDiscountTotal),
+    })).sort((a, b) => b.date.localeCompare(a.date));
+
+    // Discount totals
+    const totalLineDiscount = normalizeMoney(
+      rollups.reduce((s, r) => s + r.lineDiscountTotal, 0),
+    );
+    const totalOrderDiscount = normalizeMoney(
+      rollups.reduce((s, r) => s + r.orderDiscountTotal, 0),
+    );
+
     return {
-      metrics,
+      metrics: {
+        ...metrics,
+        totalLineDiscount,
+        totalOrderDiscount,
+        totalDiscount: normalizeMoney(totalLineDiscount + totalOrderDiscount),
+      },
+      dailyBreakdown,
       suggestions: snapshot
         ? JSON.parse(snapshot.payload)
         : await buildDashboardSuggestions(ctx),
       snapshotGeneratedAt: snapshot?.generatedAt ?? null,
+    };
+  },
+});
+
+// Sales screen summary stats
+export const salesSummaryStats = query({
+  args: {
+    fromDate: nullableStringValidator,
+    toDate: nullableStringValidator,
+    paymentMethod: v.union(v.literal("all"), v.literal("cash"), v.literal("upi_mock")),
+    status: v.union(v.literal("all"), v.literal("completed"), v.literal("returned_partial"), v.literal("returned_full")),
+  },
+  handler: async (ctx, args) => {
+    const lower = args.fromDate ?? "0000-01-01";
+    const upper = args.toDate ?? "9999-12-31";
+
+    const rollups = await ctx.db
+      .query("dailySalesRollups")
+      .withIndex("by_businessDate", (q) =>
+        q.gte("businessDate", lower).lte("businessDate", upper),
+      )
+      .take(120);
+
+    const totalRevenue = normalizeMoney(rollups.reduce((s, r) => s + r.grossRevenue, 0));
+    const totalReturns = normalizeMoney(rollups.reduce((s, r) => s + r.returnValue, 0));
+    const saleCount = rollups.reduce((s, r) => s + r.orderCount, 0);
+    const discountTotal = normalizeMoney(
+      rollups.reduce((s, r) => s + r.lineDiscountTotal + r.orderDiscountTotal, 0),
+    );
+
+    return {
+      totalRevenue,
+      totalReturns,
+      netRevenue: normalizeMoney(totalRevenue - totalReturns),
+      avgOrderValue: saleCount > 0 ? normalizeMoney(totalRevenue / saleCount) : 0,
+      saleCount,
+      discountTotal,
     };
   },
 });
@@ -600,6 +668,7 @@ export const productPerformance = query({
         productCode: string;
         productName: string;
         variantLabel: string;
+        categoryId: Id<"categories">;
         soldQty: number;
         soldRevenue: number;
         returnQty: number;
@@ -614,6 +683,7 @@ export const productPerformance = query({
         productCode: row.productCode,
         productName: row.productName,
         variantLabel: row.variantLabel,
+        categoryId: row.categoryId,
         soldQty: 0,
         soldRevenue: 0,
         returnQty: 0,
@@ -631,21 +701,71 @@ export const productPerformance = query({
       byVariant.set(row.variantId, existing);
     }
 
-    const rowsArray = Array.from(byVariant.entries()).map(([variantId, value]) => ({
+    const allVariants = Array.from(byVariant.entries()).map(([variantId, value]) => ({
       variantId,
       ...value,
+      netRevenue: normalizeMoney(value.soldRevenue - value.returnValue),
+      avgPrice: value.soldQty > 0 ? normalizeMoney(value.soldRevenue / value.soldQty) : 0,
     }));
+
+    // Category breakdown
+    const byCat = new Map<string, { categoryId: string; soldQty: number; soldRevenue: number; returnValue: number }>();
+    for (const v of allVariants) {
+      const e = byCat.get(v.categoryId) ?? { categoryId: v.categoryId, soldQty: 0, soldRevenue: 0, returnValue: 0 };
+      e.soldQty += v.soldQty;
+      e.soldRevenue = normalizeMoney(e.soldRevenue + v.soldRevenue);
+      e.returnValue = normalizeMoney(e.returnValue + v.returnValue);
+      byCat.set(v.categoryId, e);
+    }
+    const categoryBreakdownRaw = Array.from(byCat.values());
+    // Resolve names
+    const catBreakdown = await Promise.all(
+      categoryBreakdownRaw.map(async (c) => {
+        const cat = await ctx.db.get(c.categoryId as Id<"categories">);
+        return { ...c, categoryName: cat?.name ?? "Unknown" };
+      }),
+    );
+
+    // Dead stock — active variants with 0 sales in period
+    const variantsWithSales = new Set(byVariant.keys());
+    const allActive = await ctx.db
+      .query("productVariants")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .take(500);
+    const deadStock = allActive
+      .filter((v) => !variantsWithSales.has(v._id))
+      .filter((v) => {
+        if (args.categoryId && v.categoryId !== args.categoryId) return false;
+        if (args.subcategoryId && v.subcategoryId !== args.subcategoryId) return false;
+        if (args.productId && v.productId !== args.productId) return false;
+        if (args.variantId && v._id !== args.variantId) return false;
+        return true;
+      })
+      .map((v) => ({
+        variantId: v._id,
+        productId: v.productId,
+        productCode: v.productCode,
+        productName: v.productName,
+        variantLabel: v.optionSummary,
+        displayCode: v.displayCode,
+        salePrice: v.salePrice,
+      }))
+      .slice(0, 30);
+
     const trendingUp = await computeTrendingState(ctx, args);
 
     return {
-      topSelling: rowsArray
+      allVariants: allVariants.sort((a, b) => b.soldRevenue - a.soldRevenue),
+      topSelling: allVariants
         .slice()
-        .sort((left, right) => right.soldQty - left.soldQty)
+        .sort((a, b) => b.soldQty - a.soldQty)
         .slice(0, 10),
-      lowSelling: rowsArray
+      lowSelling: allVariants
         .slice()
-        .sort((left, right) => left.soldQty - right.soldQty)
+        .sort((a, b) => a.soldQty - b.soldQty)
         .slice(0, 10),
+      categoryBreakdown: catBreakdown.sort((a, b) => b.soldRevenue - a.soldRevenue),
+      deadStock,
       trendingUp: trendingUp.slice(0, 10),
     };
   },
@@ -655,15 +775,57 @@ export const inventoryHealth = query({
   args: reportFilterArgs,
   handler: async (ctx, args) => {
     const state = await computeInventoryHealthState(ctx, args);
+    const all = [...state.lowStock, ...state.outOfStock, ...state.slowMoving];
+    const uniqueItems = Array.from(new Map(all.map((i) => [i.variantId, i])).values());
+
+    // Total stock value & SKU count from full active set
+    const fullVariants = await ctx.db
+      .query("productVariants")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .take(500);
+    const filtered = fullVariants.filter((v) => {
+      if (args.categoryId && v.categoryId !== args.categoryId) return false;
+      if (args.subcategoryId && v.subcategoryId !== args.subcategoryId) return false;
+      if (args.productId && v.productId !== args.productId) return false;
+      if (args.variantId && v._id !== args.variantId) return false;
+      return true;
+    });
+    let totalStockValue = 0;
+    const tiers = { zero: 0, low: 0, medium: 0, high: 0 };
+    const enriched = await Promise.all(
+      filtered.map(async (v) => {
+        const il = await getInventoryLevelOrThrow(ctx, v._id);
+        const stockValue = normalizeMoney(il.onHand * v.salePrice);
+        totalStockValue += stockValue;
+        if (il.onHand <= 0) tiers.zero++;
+        else if (il.onHand <= 5) tiers.low++;
+        else if (il.onHand <= 20) tiers.medium++;
+        else tiers.high++;
+        return { variantId: v._id, onHand: il.onHand };
+      }),
+    );
+    totalStockValue = normalizeMoney(totalStockValue);
+
+    // Enrich low/out/slow lists with stockValue and recommendedReorder
+    const enrichList = (list: typeof state.lowStock) =>
+      list.map((item) => ({
+        ...item,
+        stockValue: normalizeMoney(item.onHand * (filtered.find((v) => v._id === item.variantId)?.salePrice ?? 0)),
+        recommendedReorder: Math.max(0, item.reorderThreshold - item.onHand),
+      }));
+
     return {
       counts: {
         lowStock: state.lowStock.length,
         outOfStock: state.outOfStock.length,
         slowMoving: state.slowMoving.length,
       },
-      lowStock: state.lowStock.slice(0, 20),
-      outOfStock: state.outOfStock.slice(0, 20),
-      slowMoving: state.slowMoving.slice(0, 20),
+      totalStockValue,
+      totalSKUs: filtered.length,
+      stockTiers: tiers,
+      lowStock: enrichList(state.lowStock).slice(0, 30),
+      outOfStock: enrichList(state.outOfStock).slice(0, 30),
+      slowMoving: enrichList(state.slowMoving).slice(0, 30),
     };
   },
 });
@@ -685,6 +847,7 @@ export const returnsReport = query({
       returnStatus: args.returnStatus,
     };
     const returnItems = await loadReturnItems(ctx, filters);
+    const saleItems = await loadSaleItems(ctx, filters);
     const returns = await ctx.db
       .query("returns")
       .withIndex("by_businessDate", (q) =>
@@ -695,15 +858,64 @@ export const returnsReport = query({
       .order("desc")
       .paginate(args.paginationOpts);
 
+    const returnValue = normalizeMoney(
+      returnItems.reduce((sum, item) => sum + item.refundAmount, 0),
+    );
+    const returnedUnits = returnItems.reduce((sum, item) => sum + item.quantity, 0);
+    const saleOrderIds = new Set(saleItems.map((i) => i.saleId));
+    const totalSalesRevenue = normalizeMoney(
+      saleItems.reduce((sum, i) => sum + i.lineTotal, 0),
+    );
+    const returnRate = saleOrderIds.size > 0
+      ? normalizeMoney((returns.page.length / saleOrderIds.size) * 100)
+      : 0;
+    const returnValuePct = totalSalesRevenue > 0
+      ? normalizeMoney((returnValue / totalSalesRevenue) * 100)
+      : 0;
+
+    // Most returned products
+    const byVariant = new Map<string, { productName: string; variantLabel: string; productCode: string; returnQty: number; returnValue: number }>();
+    for (const ri of returnItems) {
+      const e = byVariant.get(ri.variantId) ?? { productName: ri.productName, variantLabel: ri.variantLabel, productCode: ri.productCode, returnQty: 0, returnValue: 0 };
+      e.returnQty += ri.quantity;
+      e.returnValue = normalizeMoney(e.returnValue + ri.refundAmount);
+      byVariant.set(ri.variantId, e);
+    }
+    const mostReturned = Array.from(byVariant.entries())
+      .map(([variantId, v]) => ({ variantId, ...v }))
+      .sort((a, b) => b.returnQty - a.returnQty)
+      .slice(0, 15);
+
+    // Enrich return page with items
+    const enrichedPage = await Promise.all(
+      returns.page.map(async (ret) => {
+        const items = await ctx.db
+          .query("returnItems")
+          .withIndex("by_returnId", (q) => q.eq("returnId", ret._id))
+          .take(50);
+        return {
+          ...ret,
+          items: items.map((i) => ({
+            productName: i.productName,
+            variantLabel: i.variantLabel,
+            productCode: i.productCode,
+            quantity: i.quantity,
+            refundAmount: i.refundAmount,
+          })),
+        };
+      }),
+    );
+
     return {
       summary: {
-        returnValue: normalizeMoney(
-          returnItems.reduce((sum, item) => sum + item.refundAmount, 0),
-        ),
+        returnValue,
         returnCount: returnItems.length,
-        returnedUnits: returnItems.reduce((sum, item) => sum + item.quantity, 0),
+        returnedUnits,
+        returnRate,
+        returnValuePct,
       },
-      page: returns.page,
+      mostReturned,
+      page: enrichedPage,
       isDone: returns.isDone,
       continueCursor: returns.continueCursor,
     };
@@ -756,91 +968,126 @@ export const exportCsv = action({
       v.literal("productPerformance"),
       v.literal("inventoryHealth"),
       v.literal("returnsReport"),
+      v.literal("salesTransactions"),
     ),
     ...reportFilterArgs,
   },
   handler: async (ctx, args) => {
-    if (args.kind === "overview") {
-      const overviewResult: any = await ctx.runQuery(publicApi.reports.overview, args);
-      return rowsToCsv([
-        ["metric", "value"],
-        ["revenue", overviewResult.metrics.revenue],
-        ["grossRevenue", overviewResult.metrics.grossRevenue],
-        ["returnValue", overviewResult.metrics.returnValue],
-        ["orderCount", overviewResult.metrics.orderCount],
-        ["unitsSold", overviewResult.metrics.unitsSold],
-        ["avgOrderValue", overviewResult.metrics.avgOrderValue],
-        ["cashRevenue", overviewResult.metrics.paymentMix.cash],
-        ["upiRevenue", overviewResult.metrics.paymentMix.upi_mock],
-      ]);
+    const { kind, ...filterArgs } = args;
+
+    if (kind === "overview") {
+      const r: any = await ctx.runQuery(publicApi.reports.overview, filterArgs);
+      const rows = [
+        ["Date", "Orders", "Revenue", "Returns", "Net", "Discounts"],
+        ...(r.dailyBreakdown ?? []).map((d: any) => [
+          d.date, d.orders, d.revenue, d.returns, d.net, d.discounts,
+        ]),
+        [],
+        ["Summary Metric", "Value"],
+        ["Net Revenue", r.metrics.revenue],
+        ["Gross Revenue", r.metrics.grossRevenue],
+        ["Total Returns", r.metrics.returnValue],
+        ["Total Discounts", r.metrics.totalDiscount],
+        ["Order Count", r.metrics.orderCount],
+        ["Units Sold", r.metrics.unitsSold],
+        ["Avg Order Value", r.metrics.avgOrderValue],
+        ["Cash Revenue", r.metrics.paymentMix.cash],
+        ["UPI Revenue", r.metrics.paymentMix.upi_mock],
+      ];
+      return rowsToCsv(rows);
     }
 
-    if (args.kind === "productPerformance") {
-      const report: any = await ctx.runQuery(publicApi.reports.productPerformance, args);
+    if (kind === "productPerformance") {
+      const r: any = await ctx.runQuery(publicApi.reports.productPerformance, filterArgs);
       return rowsToCsv([
-        ["segment", "productCode", "productName", "variantLabel", "soldQty", "soldRevenue"],
-        ...report.topSelling.map((row: any) => [
-          "topSelling",
-          row.productCode,
-          row.productName,
-          row.variantLabel,
-          row.soldQty,
-          row.soldRevenue,
-        ]),
-        ...report.lowSelling.map((row: any) => [
-          "lowSelling",
-          row.productCode,
-          row.productName,
-          row.variantLabel,
-          row.soldQty,
-          row.soldRevenue,
-        ]),
-      ]);
-    }
-
-    if (args.kind === "inventoryHealth") {
-      const report: any = await ctx.runQuery(publicApi.reports.inventoryHealth, args);
-      return rowsToCsv([
-        ["segment", "productCode", "displayCode", "productName", "variantLabel", "onHand"],
-        ...report.lowStock.map((row: any) => [
-          "lowStock",
-          row.productCode,
-          row.displayCode,
-          row.productName,
-          row.variantLabel,
-          row.onHand,
-        ]),
-        ...report.outOfStock.map((row: any) => [
-          "outOfStock",
-          row.productCode,
-          row.displayCode,
-          row.productName,
-          row.variantLabel,
-          row.onHand,
-        ]),
-        ...report.slowMoving.map((row: any) => [
-          "slowMoving",
-          row.productCode,
-          row.displayCode,
-          row.productName,
-          row.variantLabel,
-          row.onHand,
+        ["Product Code", "Product Name", "Variant", "Units Sold", "Revenue", "Returns Qty", "Return Value", "Net Revenue", "Avg Price", "Last Sold"],
+        ...(r.allVariants ?? []).map((v: any) => [
+          v.productCode,
+          v.productName,
+          v.variantLabel,
+          v.soldQty,
+          v.soldRevenue,
+          v.returnQty,
+          v.returnValue,
+          v.netRevenue,
+          v.avgPrice,
+          v.lastSoldAt ? new Date(v.lastSoldAt).toISOString().slice(0, 10) : "Never",
         ]),
       ]);
     }
 
-    const report: any = await ctx.runQuery(publicApi.reports.returnsReport, {
-      ...args,
-      paginationOpts: {
-        numItems: 100,
-        cursor: null,
-      },
+    if (kind === "inventoryHealth") {
+      const r: any = await ctx.runQuery(publicApi.reports.inventoryHealth, filterArgs);
+      const allItems = [
+        ...(r.lowStock ?? []).map((i: any) => ({ ...i, segment: "Low Stock" })),
+        ...(r.outOfStock ?? []).map((i: any) => ({ ...i, segment: "Out of Stock" })),
+        ...(r.slowMoving ?? []).map((i: any) => ({ ...i, segment: "Slow Moving" })),
+      ];
+      return rowsToCsv([
+        ["Segment", "Product Code", "Display Code", "Product Name", "Variant", "On Hand", "Reorder Threshold", "Stock Value", "Reorder Qty", "Days Since Sale"],
+        ...allItems.map((i: any) => [
+          i.segment,
+          i.productCode,
+          i.displayCode,
+          i.productName,
+          i.variantLabel,
+          i.onHand,
+          i.reorderThreshold,
+          i.stockValue ?? 0,
+          i.recommendedReorder ?? 0,
+          i.daysSinceSale ?? "Never",
+        ]),
+      ]);
+    }
+
+    if (kind === "returnsReport") {
+      const r: any = await ctx.runQuery(publicApi.reports.returnsReport, {
+        ...filterArgs,
+        paginationOpts: { numItems: 200, cursor: null },
+      });
+      const rows: string[][] = [
+        ["Return Code", "Sale Code", "Date", "Refund Method", "Product", "Variant", "Qty", "Refund Amount"],
+      ];
+      for (const ret of r.page ?? []) {
+        for (const item of ret.items ?? []) {
+          rows.push([
+            ret.returnCode,
+            ret.saleCode,
+            new Date(ret.createdAt).toISOString().slice(0, 10),
+            ret.refundMethod,
+            item.productName,
+            item.variantLabel,
+            item.quantity,
+            item.refundAmount,
+          ]);
+        }
+      }
+      return rowsToCsv(rows);
+    }
+
+    // salesTransactions — every sale as a row
+    const sales: any = await ctx.runQuery(publicApi.pos.salesList, {
+      paginationOpts: { numItems: 500, cursor: null },
+      search: null,
+      fromDate: filterArgs.fromDate,
+      toDate: filterArgs.toDate,
+      paymentMethod: filterArgs.paymentMethod,
+      status: "all",
     });
     return rowsToCsv([
-      ["metric", "value"],
-      ["returnValue", report.summary.returnValue],
-      ["returnCount", report.summary.returnCount],
-      ["returnedUnits", report.summary.returnedUnits],
+      ["Sale Code", "Date", "Status", "Payment", "Customer", "Phone", "Subtotal", "Total", "Items", "Units"],
+      ...(sales.page ?? []).map((s: any) => [
+        s.saleCode,
+        s.businessDate,
+        s.status,
+        s.paymentMethod,
+        s.customerName ?? "Walk-in",
+        s.customerPhone ?? "",
+        s.total,
+        s.total,
+        s.itemCount,
+        s.totalQty,
+      ]),
     ]);
   },
 });

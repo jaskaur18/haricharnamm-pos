@@ -99,7 +99,6 @@ type TabKey = typeof TAB_KEYS[number]
 function TabButton({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
   return (
     <Button
-      unstyled
       onPress={onPress}
       px="$3"
       py="$2"
@@ -107,7 +106,7 @@ function TabButton({ active, label, onPress }: { active: boolean; label: string;
       bg={active ? '$color4' : 'transparent'}
       hoverStyle={{ bg: active ? '$color4' : '$color3' }}
       pressStyle={{ bg: '$color4' }}
-      
+
     >
       <Paragraph
         color={active ? '$color12' : '$color10'}
@@ -246,10 +245,10 @@ export function ReportsScreen() {
         <SurfaceCard gap="$2.5">
           <XStack gap="$2" flexWrap="wrap">
             <YStack style={{ minWidth: 120 }}>
-              <FormField label="From"><Input value={fromDate} onChangeText={setFromDate} placeholder="YYYY-MM-DD" bg="$color1" borderColor="$borderColor" /></FormField>
+              <FormField label="From"><Input value={fromDate} onChangeText={setFromDate} placeholder="YYYY-MM-DD" bg="$color3" borderWidth={0} hoverStyle={{ bg: '$color4' }} focusStyle={{ bg: '$color4' }} /></FormField>
             </YStack>
             <YStack style={{ minWidth: 120 }}>
-              <FormField label="To"><Input value={toDate} onChangeText={setToDate} placeholder="YYYY-MM-DD" bg="$color1" borderColor="$borderColor" /></FormField>
+              <FormField label="To"><Input value={toDate} onChangeText={setToDate} placeholder="YYYY-MM-DD" bg="$color3" borderWidth={0} hoverStyle={{ bg: '$color4' }} focusStyle={{ bg: '$color4' }} /></FormField>
             </YStack>
             <YStack style={{ minWidth: 140 }}>
               <SelectionField label="Category" value={categoryId} placeholder="All" options={[{ label: 'All', value: null }, ...(categories ?? []).map((c) => ({ label: c.name, value: c._id }))]} onChange={setCategoryId} />

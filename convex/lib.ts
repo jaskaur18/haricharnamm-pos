@@ -15,6 +15,8 @@ export type MovementType =
   | "sale"
   | "return";
 
+export type StockState = "in_stock" | "low_stock" | "out_of_stock";
+
 export const nullableStringValidator = v.union(v.string(), v.null());
 export const nullableCategoryIdValidator = v.union(v.id("categories"), v.null());
 export const nullableCustomerIdValidator = v.union(v.id("customers"), v.null());
@@ -66,6 +68,12 @@ export function calculateLineTotal(
   lineDiscount: number,
 ) {
   return normalizeMoney(unitPrice * quantity - lineDiscount);
+}
+
+export function deriveStockStatus(onHand: number, reorderThreshold: number): StockState {
+  if (onHand <= 0) return "out_of_stock";
+  if (onHand <= reorderThreshold) return "low_stock";
+  return "in_stock";
 }
 
 export function makeBusinessDate(timestamp: number) {

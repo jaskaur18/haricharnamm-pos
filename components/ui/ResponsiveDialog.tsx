@@ -41,7 +41,6 @@ export function ResponsiveDialog({
                 ) : null}
               </YStack>
               <Button
-                unstyled
                 onPress={() => onOpenChange(false)}
                 bg="$color3"
                 p="$2"
@@ -89,7 +88,6 @@ export function ResponsiveDialog({
               ) : null}
             </YStack>
             <Button
-              unstyled
               onPress={() => onOpenChange(false)}
               bg="$color3"
               p="$2"

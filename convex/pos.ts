@@ -18,9 +18,10 @@ import {
   normalizeMoney,
   nullableCategoryIdValidator,
   nullableStringValidator,
-  paymentMethodValidator,
   touchInventoryLevel,
   upsertCustomer,
+  deriveStockStatus,
+  paymentMethodValidator,
 } from "./lib";
 
 const salePreviewLineValidator = v.array(cartLineValidator);
@@ -82,12 +83,7 @@ async function serializeCatalogItem(
     salePrice: variant.salePrice,
     reorderThreshold: variant.reorderThreshold,
     onHand: inventoryLevel.onHand,
-    stockState:
-      inventoryLevel.onHand <= 0
-        ? "out_of_stock"
-        : inventoryLevel.onHand <= variant.reorderThreshold
-          ? "low_stock"
-          : "in_stock",
+    stockState: deriveStockStatus(inventoryLevel.onHand, variant.reorderThreshold),
     mediaUrl,
   };
 }
@@ -480,33 +476,31 @@ export const saleDetail = query({
       .withIndex("by_saleId", (q) => q.eq("saleId", args.saleId))
       .take(20);
 
-    const serializedItems: Array<
-      Doc<"saleItems"> & { mediaUrl: string | null; remainingQty: number }
-    > = [];
-    for (const item of items) {
-      const mediaUrl =
-        (await getPrimaryMediaUrl(ctx, item.productId, item.variantId)) ??
-        (await getPrimaryMediaUrl(ctx, item.productId));
-      serializedItems.push({
-        ...item,
-        mediaUrl,
-        remainingQty: item.quantity - item.returnedQuantity,
-      });
-    }
+    const serializedItems = await Promise.all(
+      items.map(async (item) => {
+        const mediaUrl =
+          (await getPrimaryMediaUrl(ctx, item.productId, item.variantId)) ??
+          (await getPrimaryMediaUrl(ctx, item.productId));
+        return {
+          ...item,
+          mediaUrl,
+          remainingQty: item.quantity - item.returnedQuantity,
+        };
+      })
+    );
 
-    const serializedReturns: Array<
-      Doc<"returns"> & { items: Doc<"returnItems">[] }
-    > = [];
-    for (const returnRow of returns) {
-      const returnItems = await ctx.db
-        .query("returnItems")
-        .withIndex("by_returnId", (q) => q.eq("returnId", returnRow._id))
-        .take(50);
-      serializedReturns.push({
-        ...returnRow,
-        items: returnItems,
-      });
-    }
+    const serializedReturns = await Promise.all(
+      returns.map(async (returnRow) => {
+        const returnItems = await ctx.db
+          .query("returnItems")
+          .withIndex("by_returnId", (q) => q.eq("returnId", returnRow._id))
+          .take(50);
+        return {
+          ...returnRow,
+          items: returnItems,
+        };
+      })
+    );
 
     return {
       ...sale,

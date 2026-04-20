@@ -43,17 +43,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }).format(new Date())
 
   return (
-    <XStack flex={1} bg="$color1">
+    <XStack flex={1} bg="#000000" theme="dark">
       {/* ── Desktop Sidebar ── */}
       {desktop ? (
         <YStack
-          style={{ width: 220, height: '100vh', position: 'sticky' as any, top: 0 }}
-          bg="$color2"
-          borderRightWidth={1}
-          borderColor="$borderColor"
+          style={{
+            width: 240,
+            height: 'calc(100vh - 32px)',
+            position: 'sticky' as any,
+            top: 16,
+            marginLeft: 16
+          }}
+          bg="rgba(25, 25, 28, 0.65)"
+          borderWidth={1}
+          borderColor="rgba(255, 255, 255, 0.08)"
+          rounded="$6"
           py="$4"
           gap="$1"
-
         >
           {/* Brand */}
           <XStack px="$3.5" py="$2" items="center" gap="$2.5">
@@ -67,10 +73,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Paragraph color="#09090B" fontSize={12} fontWeight="900">HC</Paragraph>
             </YStack>
             <YStack>
-              <Paragraph color="$color12" fontSize="$3" fontWeight="800" letterSpacing={0.3}>
+              <Paragraph color="#FFFFFF" fontSize="$3" fontWeight="800" letterSpacing={0.3}>
                 HARI CHARNAMM
               </Paragraph>
-              <Paragraph color="$color7" fontSize={10}>{todayLabel}</Paragraph>
+              <Paragraph color="#8B8B93" fontSize={10}>{todayLabel}</Paragraph>
             </YStack>
           </XStack>
 
@@ -83,7 +89,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               return (
                 <Button
                   key={item.href}
-                  unstyled
                   onPress={() => router.replace(item.href as any)}
                 >
                   <XStack
@@ -92,19 +97,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     px="$3"
                     py="$2"
                     rounded="$3"
-                    bg={active ? '$color4' : 'transparent'}
-                    hoverStyle={{ bg: '$color3' }}
-                    pressStyle={{ bg: '$color4' }}
+                    bg={active ? 'rgba(232, 162, 48, 0.12)' : 'transparent'}
+                    hoverStyle={{ bg: 'rgba(255, 255, 255, 0.05)' }}
+                    pressStyle={{ bg: 'rgba(232, 162, 48, 0.12)' }}
                   >
                     {active ? (
                       <YStack
-                        bg="$color8"
+                        bg="#FFAF20"
                         style={{ position: 'absolute' as any, left: 0, top: 6, bottom: 6, width: 3, borderRadius: 999 }}
                       />
                     ) : null}
-                    <Icon color={active ? '$color8' : '$color11'} size={18} />
+                    <Icon color={active ? '#FFAF20' : '#E4E4E7'} size={18} />
                     <Paragraph
-                      color={active ? '$color12' : '$color11'}
+                      color={active ? '#FFFFFF' : '#A1A1AA'}
                       fontSize="$3"
                       fontWeight={active ? '700' : '500'}
                     >
@@ -136,8 +141,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <YStack
             gap="$5"
             style={{
-              paddingHorizontal: desktop ? 28 : 16,
-              paddingTop: desktop ? 28 : 16,
+              paddingHorizontal: desktop ? 32 : 16,
+              paddingTop: desktop ? 16 : 16,
               paddingBottom: desktop ? 36 : 100,
             }}
           >

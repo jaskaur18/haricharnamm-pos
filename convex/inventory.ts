@@ -17,6 +17,7 @@ import {
   slugify,
   touchInventoryLevel,
   variantAttributeValidator,
+  deriveStockStatus,
 } from "./lib";
 
 const variantInputValidator = v.object({
@@ -117,12 +118,7 @@ async function serializeVariantCard(
     subcategoryId: variant.subcategoryId,
     onHand: inventoryLevel.onHand,
     lastSaleAt: inventoryLevel.lastSaleAt,
-    stockState:
-      inventoryLevel.onHand <= 0
-        ? "out_of_stock"
-        : inventoryLevel.onHand <= variant.reorderThreshold
-          ? "low_stock"
-          : "in_stock",
+    stockState: deriveStockStatus(inventoryLevel.onHand, variant.reorderThreshold),
     mediaUrl,
   };
 }
@@ -322,12 +318,11 @@ export const list = query({
         (row): row is Doc<"productVariants"> => !!row,
       );
       if (directMatches.length > 0) {
-        const items: Array<Awaited<ReturnType<typeof serializeVariantCard>>> = [];
-        for (const match of directMatches) {
-          items.push(await serializeVariantCard(ctx, match));
-        }
+        const serializedMatches = await Promise.all(
+          directMatches.map((match) => serializeVariantCard(ctx, match))
+        );
         return {
-          page: items,
+          page: serializedMatches,
           isDone: true,
           continueCursor: args.paginationOpts.cursor,
         };
@@ -352,17 +347,13 @@ export const list = query({
         });
 
       const result = await searchQuery.paginate(args.paginationOpts);
-      const page: Array<Awaited<ReturnType<typeof serializeVariantCard>>> = [];
-
-      for (const variant of result.page) {
-        const serialized = await serializeVariantCard(ctx, variant);
-        if (
-          args.stockState === "all" ||
-          serialized.stockState === args.stockState
-        ) {
-          page.push(serialized);
-        }
-      }
+      const serializedPage = await Promise.all(
+        result.page.map((variant) => serializeVariantCard(ctx, variant))
+      );
+      const page = serializedPage.filter(
+        (serialized) =>
+          args.stockState === "all" || serialized.stockState === args.stockState
+      );
 
       return {
         ...result,
@@ -407,16 +398,13 @@ export const list = query({
     }
 
     const result = await baseQuery.order("desc").paginate(args.paginationOpts);
-    const page: Array<Awaited<ReturnType<typeof serializeVariantCard>>> = [];
-    for (const variant of result.page) {
-      const serialized = await serializeVariantCard(ctx, variant);
-      if (
-        args.stockState === "all" ||
-        serialized.stockState === args.stockState
-      ) {
-        page.push(serialized);
-      }
-    }
+    const serializedPage = await Promise.all(
+      result.page.map((variant) => serializeVariantCard(ctx, variant))
+    );
+    const page = serializedPage.filter(
+      (serialized) =>
+        args.stockState === "all" || serialized.stockState === args.stockState
+    );
 
     return {
       ...result,
@@ -448,31 +436,26 @@ export const detail = query({
       .withIndex("by_productId_and_sortOrder", (q) => q.eq("productId", args.productId))
       .take(20);
 
-    const serializedVariants: Array<
-      Doc<"productVariants"> & {
-        inventoryLevel: Doc<"inventoryLevels">;
-        mediaUrl: string | null;
-      }
-    > = [];
-    for (const variant of variants) {
-      const inventoryLevel = await getInventoryLevelOrThrow(ctx, variant._id);
-      const mediaUrl =
-        (await getPrimaryMediaUrl(ctx, variant.productId, variant._id)) ??
-        (await getPrimaryMediaUrl(ctx, variant.productId));
-      serializedVariants.push({
-        ...variant,
-        inventoryLevel,
-        mediaUrl,
-      });
-    }
+    const serializedVariants = await Promise.all(
+      variants.map(async (variant) => {
+        const inventoryLevel = await getInventoryLevelOrThrow(ctx, variant._id);
+        const mediaUrl =
+          (await getPrimaryMediaUrl(ctx, variant.productId, variant._id)) ??
+          (await getPrimaryMediaUrl(ctx, variant.productId));
+        return {
+          ...variant,
+          inventoryLevel,
+          mediaUrl,
+        };
+      })
+    );
 
-    const media: Array<Doc<"productMedia"> & { url: string | null }> = [];
-    for (const row of mediaRows) {
-      media.push({
+    const media = await Promise.all(
+      mediaRows.map(async (row) => ({
         ...row,
         url: await ctx.storage.getUrl(row.storageId),
-      });
-    }
+      }))
+    );
 
     return {
       ...product,

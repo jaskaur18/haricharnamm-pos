@@ -16,6 +16,7 @@ import { SelectionField } from 'components/ui/SelectionField'
 import { StatusBadge } from 'components/ui/StatusBadge'
 import { SurfaceCard } from 'components/ui/SurfaceCard'
 import { useRouter } from 'expo-router'
+import QRCode from 'react-native-qrcode-svg'
 
 type CatalogItem = {
   _id: string
@@ -148,6 +149,17 @@ export function PosScreen() {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [showUpiDialog, setShowUpiDialog] = useState(false)
+  const [upiTimer, setUpiTimer] = useState(300)
+
+  useEffect(() => {
+    if (showUpiDialog && upiTimer > 0) {
+      const interval = setInterval(() => {
+        setUpiTimer((t) => t - 1)
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [showUpiDialog, upiTimer])
 
   useEffect(() => {
     if (!categoryId) {
@@ -286,18 +298,7 @@ export function PosScreen() {
     setCart((current) => current.filter((line) => line.variantId !== variantId))
   }
 
-  async function handleCheckout() {
-    if (cart.length === 0) {
-      toast.show('Cart is empty')
-      return
-    }
-    if (previewError) {
-      toast.show('Resolve checkout issues first', {
-        message: previewError,
-      })
-      return
-    }
-
+  async function executeCheckout() {
     setIsSubmitting(true)
     try {
       const result = await createSale({
@@ -334,6 +335,7 @@ export function PosScreen() {
       setPaymentNote('')
       setNotes('')
       setCartOpen(false)
+      setShowUpiDialog(false)
       router.replace(`/sales?saleId=${result.saleId}` as any)
     } catch (error) {
       toast.show('Checkout failed', {
@@ -344,6 +346,27 @@ export function PosScreen() {
     }
   }
 
+  function handleCheckout() {
+    if (cart.length === 0) {
+      toast.show('Cart is empty')
+      return
+    }
+    if (previewError) {
+      toast.show('Resolve checkout issues first', {
+        message: previewError,
+      })
+      return
+    }
+
+    if (paymentMethod === 'upi_mock') {
+      setUpiTimer(300)
+      setShowUpiDialog(true)
+      return
+    }
+
+    void executeCheckout()
+  }
+
   // ── Cart Panel (shared between desktop inline and mobile sheet) ──
   const cartContent = (
     <YStack gap="$3">
@@ -352,7 +375,7 @@ export function PosScreen() {
           Cart ({cart.length})
         </Paragraph>
         {!desktop && cart.length > 0 ? (
-          <Button unstyled onPress={() => setCartOpen(false)}>
+          <Button onPress={() => setCartOpen(false)}>
             <X size={18} color="$color10" />
           </Button>
         ) : null}
@@ -391,7 +414,6 @@ export function PosScreen() {
                   {/* Quantity stepper */}
                   <XStack gap="$1" items="center">
                     <Button
-                      unstyled
                       bg="$color4"
                       rounded="$3"
                       p="$1"
@@ -400,7 +422,7 @@ export function PosScreen() {
                       <Minus size={14} color="$color10" />
                     </Button>
                     <Paragraph
-                     
+
                       fontWeight="700"
                       fontSize="$3"
                       style={{ minWidth: 28 }}
@@ -409,7 +431,6 @@ export function PosScreen() {
                       {line.quantity}
                     </Paragraph>
                     <Button
-                      unstyled
                       bg="$color4"
                       rounded="$3"
                       p="$1"
@@ -435,11 +456,13 @@ export function PosScreen() {
                       placeholder="Disc"
                       size="$2"
                       style={{ width: 60 }}
-                      bg="$color1"
-                      borderColor="$borderColor"
+                      bg="$color3"
+                      borderWidth={0}
+                      hoverStyle={{ bg: '$color4' }}
+                      focusStyle={{ bg: '$color4' }}
+                      px="$4"
                     />
                     <Button
-                      unstyled
                       onPress={() => removeLine(line.variantId)}
                       p="$1"
                     >
@@ -461,8 +484,11 @@ export function PosScreen() {
           keyboardType="numeric"
           placeholder="0"
           size="$3"
-          bg="$color1"
-          borderColor="$borderColor"
+          bg="$color3"
+          borderWidth={0}
+          hoverStyle={{ bg: '$color4' }}
+          focusStyle={{ bg: '$color4' }}
+          px="$4"
         />
       </FormField>
 
@@ -475,8 +501,11 @@ export function PosScreen() {
               onChangeText={setCustomerName}
               placeholder="Name (optional)"
               size="$3"
-              bg="$color1"
-              borderColor="$borderColor"
+              bg="$color3"
+              borderWidth={0}
+              hoverStyle={{ bg: '$color4' }}
+              focusStyle={{ bg: '$color4' }}
+              px="$4"
             />
           </FormField>
           <Input
@@ -484,8 +513,11 @@ export function PosScreen() {
             onChangeText={setCustomerPhone}
             placeholder="Phone (optional)"
             size="$3"
-            bg="$color1"
-            borderColor="$borderColor"
+            bg="$color3"
+            borderWidth={0}
+            hoverStyle={{ bg: '$color4' }}
+            focusStyle={{ bg: '$color4' }}
+            px="$4"
             keyboardType="phone-pad"
           />
         </YStack>
@@ -507,8 +539,11 @@ export function PosScreen() {
             onChangeText={setPaymentNote}
             placeholder={paymentMethod === 'cash' ? 'Note' : 'UPI ref'}
             size="$3"
-            bg="$color1"
-            borderColor="$borderColor"
+            bg="$color3"
+            borderWidth={0}
+            hoverStyle={{ bg: '$color4' }}
+            focusStyle={{ bg: '$color4' }}
+            px="$4"
           />
         </YStack>
       </XStack>
@@ -560,8 +595,8 @@ export function PosScreen() {
 
       <Button
         bg="$color8"
-       
-       
+
+
         size="$4"
         icon={ReceiptText}
         onPress={handleCheckout}
@@ -647,7 +682,7 @@ export function PosScreen() {
                   gap="$2"
                   style={{ width: desktop ? 220 : '48%' }}
                   hoverStyle={{ borderColor: '$borderColorHover' }}
-                  
+
                 >
                   <XStack gap="$2" items="center">
                     <ProductImage uri={group.mediaUrl} size={44} label={group.productCode} />
@@ -672,8 +707,8 @@ export function PosScreen() {
 
                   <Button
                     bg="$color8"
-                   
-                   
+
+
                     size="$2.5"
                     onPress={() => {
                       if (group.variants.length === 1) {
@@ -697,7 +732,7 @@ export function PosScreen() {
                 bg="$color3"
                 borderColor="$borderColor"
                 borderWidth={1}
-               
+
                 size="$3"
                 onPress={() => loadMore(24)}
               >
@@ -767,8 +802,8 @@ export function PosScreen() {
               </YStack>
               <Button
                 bg="$color8"
-               
-               
+
+
                 size="$3"
                 onPress={() => {
                   addVariantToCart(item)
@@ -779,6 +814,60 @@ export function PosScreen() {
               </Button>
             </XStack>
           ))}
+        </YStack>
+      </ResponsiveDialog>
+
+      {/* UPI Checkout Dialog */}
+      <ResponsiveDialog
+        open={showUpiDialog}
+        onOpenChange={(open) => {
+          setShowUpiDialog(open)
+          if (!open) {
+            setIsSubmitting(false)
+          }
+        }}
+        title="UPI Payment"
+      >
+        <YStack gap="$4" py="$2">
+          <XStack justify="space-between" items="center" flexWrap="wrap" gap="$4">
+            <YStack flex={1} gap="$3" minWidth={200}>
+              <SurfaceCard gap="$1.5" p="$3">
+                <Paragraph color="$color10" fontSize="$2" fontWeight="600">Scan to Pay</Paragraph>
+                <Paragraph color="$color12" fontSize="$5" fontWeight="800">
+                  {formatCurrency(preview?.summary.total ?? 0)}
+                </Paragraph>
+                {customerName ? (
+                  <Paragraph color="$color7" fontSize="$2" mt="$1">Customer: {customerName}</Paragraph>
+                ) : null}
+              </SurfaceCard>
+
+              <YStack gap="$1" items="center">
+                <Paragraph color={upiTimer <= 60 ? '#FCA5A5' : '$color11'} fontSize="$4" fontWeight="700" mt="$2">
+                  {Math.floor(upiTimer / 60)}:{(upiTimer % 60).toString().padStart(2, '0')}
+                </Paragraph>
+                <Paragraph color="$color7" fontSize="$2">Expires in</Paragraph>
+              </YStack>
+            </YStack>
+
+            <YStack items="center" justify="center" p="$2" bg="#FFFFFF" rounded="$4" mx="auto">
+               <QRCode
+                 value={`upi://pay?pa=yourmerchant@ybl&pn=Honey%20Singh%20POS&am=${(preview?.summary.total ?? 0).toFixed(2)}&tr=POS-WEB&cu=INR`}
+                 size={180}
+                 color="#000000"
+                 backgroundColor="#FFFFFF"
+               />
+            </YStack>
+          </XStack>
+
+          <Button
+            theme="accent"
+            size="$4"
+            disabled={upiTimer <= 0 || isSubmitting}
+            onPress={executeCheckout}
+            mt="$2"
+          >
+            {isSubmitting ? 'Processing...' : 'Confirm Payment Received'}
+          </Button>
         </YStack>
       </ResponsiveDialog>
     </YStack>

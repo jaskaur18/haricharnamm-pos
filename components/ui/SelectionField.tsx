@@ -33,11 +33,12 @@ export function SelectionField({
       <FormField label={label} description={description}>
         <Button
           onPress={() => setOpen(true)}
-          bg="$color1"
-          borderColor="$borderColor"
-          borderWidth={1}
-          hoverStyle={{ borderColor: '$borderColorHover' }}
+          bg="$color3"
+          borderWidth={0}
+          hoverStyle={{ bg: '$color4' }}
+          pressStyle={{ bg: '$color4' }}
           justify="space-between"
+          px="$4"
         >
           <Paragraph color={selected ? '$color12' : '$color7'} flex={1} numberOfLines={1}>
             {selected?.label ?? placeholder}
@@ -58,7 +59,6 @@ export function SelectionField({
             return (
               <Button
                 key={option.value ?? '__null__'}
-                unstyled
                 onPress={() => {
                   onChange(option.value)
                   setOpen(false)

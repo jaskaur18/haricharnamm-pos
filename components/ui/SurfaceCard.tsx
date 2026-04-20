@@ -6,8 +6,12 @@ export function SurfaceCard(props: YStackProps) {
       bg="$color2"
       borderWidth={1}
       borderColor="$borderColor"
-      rounded="$5"
-      p="$3.5"
+      rounded="$6"
+      p="$4"
+      style={{
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)'
+      }}
       {...props}
     />
   )

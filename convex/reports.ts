@@ -13,6 +13,7 @@ import {
   nullableProductIdValidator,
   nullableStringValidator,
   nullableVariantIdValidator,
+  deriveStockStatus,
 } from "./lib";
 
 const publicApi = api as any;
@@ -410,59 +411,42 @@ async function computeInventoryHealthState(
     .take(500);
 
   const now = Date.now();
-  const eligible: Array<{
-    variantId: Id<"productVariants">;
-    productId: Id<"products">;
-    productCode: string;
-    displayCode: string;
-    productName: string;
-    variantLabel: string;
-    reorderThreshold: number;
-    onHand: number;
-    stockState: "in_stock" | "low_stock" | "out_of_stock";
-    lastSaleAt: number | null;
-    daysSinceSale: number | null;
-    mediaUrl: string | null;
-  }> = [];
+  const filteredVariants = variants.filter((variant) => {
+    if (filters.categoryId && variant.categoryId !== filters.categoryId) return false;
+    if (filters.subcategoryId && variant.subcategoryId !== filters.subcategoryId) return false;
+    if (filters.productId && variant.productId !== filters.productId) return false;
+    if (filters.variantId && variant._id !== filters.variantId) return false;
+    return true;
+  });
 
-  for (const variant of variants) {
-    if (filters.categoryId && variant.categoryId !== filters.categoryId) continue;
-    if (filters.subcategoryId && variant.subcategoryId !== filters.subcategoryId) {
-      continue;
-    }
-    if (filters.productId && variant.productId !== filters.productId) continue;
-    if (filters.variantId && variant._id !== filters.variantId) continue;
+  const eligible = await Promise.all(
+    filteredVariants.map(async (variant) => {
+      const inventoryLevel = await getInventoryLevelOrThrow(ctx, variant._id);
+      const mediaUrl =
+        (await getPrimaryMediaUrl(ctx, variant.productId, variant._id)) ??
+        (await getPrimaryMediaUrl(ctx, variant.productId));
 
-    const inventoryLevel = await getInventoryLevelOrThrow(ctx, variant._id);
-    const mediaUrl =
-      (await getPrimaryMediaUrl(ctx, variant.productId, variant._id)) ??
-      (await getPrimaryMediaUrl(ctx, variant.productId));
+      const stockState = deriveStockStatus(inventoryLevel.onHand, variant.reorderThreshold);
+      const daysSinceSale = inventoryLevel.lastSaleAt
+        ? Math.floor((now - inventoryLevel.lastSaleAt) / 86_400_000)
+        : null;
 
-    const stockState =
-      inventoryLevel.onHand <= 0
-        ? "out_of_stock"
-        : inventoryLevel.onHand <= variant.reorderThreshold
-          ? "low_stock"
-          : "in_stock";
-    const daysSinceSale = inventoryLevel.lastSaleAt
-      ? Math.floor((now - inventoryLevel.lastSaleAt) / 86_400_000)
-      : null;
-
-    eligible.push({
-      variantId: variant._id,
-      productId: variant.productId,
-      productCode: variant.productCode,
-      displayCode: variant.displayCode,
-      productName: variant.productName,
-      variantLabel: variant.optionSummary,
-      reorderThreshold: variant.reorderThreshold,
-      onHand: inventoryLevel.onHand,
-      stockState,
-      lastSaleAt: inventoryLevel.lastSaleAt,
-      daysSinceSale,
-      mediaUrl,
-    });
-  }
+      return {
+        variantId: variant._id,
+        productId: variant.productId,
+        productCode: variant.productCode,
+        displayCode: variant.displayCode,
+        productName: variant.productName,
+        variantLabel: variant.optionSummary,
+        reorderThreshold: variant.reorderThreshold,
+        onHand: inventoryLevel.onHand,
+        stockState,
+        lastSaleAt: inventoryLevel.lastSaleAt,
+        daysSinceSale,
+        mediaUrl,
+      };
+    })
+  );
 
   return {
     lowStock: eligible.filter((item) => item.stockState === "low_stock"),

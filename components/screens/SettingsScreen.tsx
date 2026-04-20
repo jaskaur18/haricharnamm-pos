@@ -169,10 +169,9 @@ export function SettingsScreen() {
                   gap="$2.5"
                   items="center"
                   hoverStyle={{ borderColor: '$borderColorHover' }}
-                  
+
                 >
                   <Button
-                    unstyled
                     onPress={() => toggleExpanded(category._id)}
                     p="$1"
                   >
@@ -218,7 +217,7 @@ export function SettingsScreen() {
                         gap="$2.5"
                         items="center"
                         hoverStyle={{ borderColor: '$borderColorHover' }}
-                        
+
                       >
                         <YStack flex={1} gap="$0.5">
                           <Paragraph color="$color11" fontWeight="600" fontSize="$2">
@@ -249,8 +248,11 @@ export function SettingsScreen() {
               value={form.name}
               onChangeText={(name) => setForm((c) => ({ ...c, name }))}
               placeholder="e.g. Crowns & Mukuts"
-              bg="$color1"
-              borderColor="$borderColor"
+              bg="$color3"
+              borderWidth={0}
+              hoverStyle={{ bg: '$color4' }}
+              focusStyle={{ bg: '$color4' }}
+              px="$4"
             />
           </FormField>
 

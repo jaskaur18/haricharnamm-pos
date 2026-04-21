@@ -433,180 +433,180 @@ export function PosScreen() {
   return (
     <YStack flex={1}>
       <ScreenScaffold>
-      {!mobile ? (
-        <ScreenHeader
-          eyebrow="Checkout"
-          title="Point of Sale"
-          subtitle="Fast product search and a cleaner one-handed checkout flow."
-          actions={
-            <HeaderAction bg={desktop ? '$color3' : '$bgElevated'} borderColor={desktop ? '$borderColor' : '$borderSubtle'} borderWidth={1} icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)}>
-              Scan
-            </HeaderAction>
-          }
-        />
-      ) : null}
+        {!mobile ? (
+          <ScreenHeader
+            eyebrow="Checkout"
+            title="Point of Sale"
+            subtitle="Fast product search and a cleaner one-handed checkout flow."
+            actions={
+              <HeaderAction bg={desktop ? '$color3' : '$bgElevated'} borderColor={desktop ? '$borderColor' : '$borderSubtle'} borderWidth={1} icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)}>
+                Scan
+              </HeaderAction>
+            }
+          />
+        ) : null}
 
-      {mobile ? (
-        <YStack gap="$3">
-          <XStack items="center" gap="$2" bg="$bgSurface" borderWidth={1} borderColor="$borderSubtle" rounded="$6" px="$3">
-            <Search size={16} color="$color10" />
-            <Input value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
-            {Platform.OS !== 'web' ? (
-              <Button size="$2.5" theme="accent" icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)} />
-            ) : null}
-          </XStack>
+        {mobile ? (
+          <YStack gap="$3">
+            <XStack items="center" gap="$2" bg="$bgSurface" borderWidth={1} borderColor="$borderSubtle" rounded="$6" px="$3">
+              <Search size={16} color="$color10" />
+              <Input value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
+              {Platform.OS !== 'web' ? (
+                <Button size="$2.5" theme="accent" icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)} />
+              ) : null}
+            </XStack>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 } as any}>
-            <XStack gap="$2">
-              <Button size="$3" bg={categoryId === null ? '$accentSoft' : '$bgSurface'} borderWidth={1} borderColor={categoryId === null ? '$borderStrong' : '$borderSubtle'} onPress={() => setCategoryId(null)}>
-                All
-              </Button>
-              {(categories ?? []).map((category) => (
-                <Button
-                  key={category._id}
-                  size="$3"
-                  bg={categoryId === category._id ? '$accentSoft' : '$bgSurface'}
-                  borderWidth={1}
-                  borderColor={categoryId === category._id ? '$borderStrong' : '$borderSubtle'}
-                  onPress={() => setCategoryId(category._id)}
-                >
-                  {category.name}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 } as any}>
+              <XStack gap="$2">
+                <Button size="$3" bg={categoryId === null ? '$accentSoft' : '$bgSurface'} borderWidth={1} borderColor={categoryId === null ? '$borderStrong' : '$borderSubtle'} onPress={() => setCategoryId(null)}>
+                  All
                 </Button>
-              ))}
-            </XStack>
-          </ScrollView>
+                {(categories ?? []).map((category) => (
+                  <Button
+                    key={category._id}
+                    size="$3"
+                    bg={categoryId === category._id ? '$accentSoft' : '$bgSurface'}
+                    borderWidth={1}
+                    borderColor={categoryId === category._id ? '$borderStrong' : '$borderSubtle'}
+                    onPress={() => setCategoryId(category._id)}
+                  >
+                    {category.name}
+                  </Button>
+                ))}
+              </XStack>
+            </ScrollView>
 
-          {status === 'LoadingFirstPage' ? (
-            <XStack items="center" gap="$2" py="$6" justify="center"><Spinner size="small" /><Paragraph color="$color10">Loading catalog…</Paragraph></XStack>
-          ) : (
-            <YStack gap="$2.5">
-              {productGroups.map((group) => {
-                const isOos = group.stockState === 'out_of_stock'
-                return (
-                  <ListRow
-                    key={group.productId}
-                    onPress={() => setDetailsProductId(group.productId)}
-                    leading={<ProductImage uri={group.mediaUrl} size={56} label={group.productCode} />}
-                    title={group.productName}
-                    meta={<Paragraph color="$color12" fontSize="$4" fontWeight="800">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>}
-                    subtitle={
-                      <YStack gap="$1">
-                        <Paragraph color="$color10" fontSize="$2">{group.productCode} · {group.variants.length} variant{group.variants.length > 1 ? 's' : ''}</Paragraph>
-                        <XStack justify="space-between" items="center">
-                          <Paragraph color="$textFaint" fontSize="$1">{formatNumber(group.totalOnHand)} available</Paragraph>
-                          <StatusBadge status={group.stockState} />
-                        </XStack>
-                      </YStack>
-                    }
-                    trailing={
-                      <Button
-                        theme={isOos ? undefined : 'accent'}
-                        bg={isOos ? '$bgElevated' : undefined}
-                        borderWidth={isOos ? 1 : 0}
-                        borderColor="$borderSubtle"
-                        disabled={isOos}
-                        onPress={() => {
-                          if (isOos) return
-                          if (group.variants.length === 1) {
-                            addVariantToCart(group.variants[0])
-                            return
-                          }
-                          setVariantPickerItems(group.variants)
-                          setVariantPickerOpen(true)
-                        }}
-                      >
-                        {isOos ? 'OOS' : group.variants.length === 1 ? 'Add' : 'Choose'}
-                      </Button>
-                    }
-                  />
-                )
-              })}
+            {status === 'LoadingFirstPage' ? (
+              <XStack items="center" gap="$2" py="$6" justify="center"><Spinner size="small" /><Paragraph color="$color10">Loading catalog…</Paragraph></XStack>
+            ) : (
+              <YStack gap="$2.5">
+                {productGroups.map((group) => {
+                  const isOos = group.stockState === 'out_of_stock'
+                  return (
+                    <ListRow
+                      key={group.productId}
+                      onPress={() => setDetailsProductId(group.productId)}
+                      leading={<ProductImage uri={group.mediaUrl} size={56} label={group.productCode} />}
+                      title={group.productName}
+                      meta={<Paragraph color="$color12" fontSize="$4" fontWeight="800">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>}
+                      subtitle={
+                        <YStack gap="$1">
+                          <Paragraph color="$color10" fontSize="$2">{group.productCode} · {group.variants.length} variant{group.variants.length > 1 ? 's' : ''}</Paragraph>
+                          <XStack justify="space-between" items="center">
+                            <Paragraph color="$textFaint" fontSize="$1">{formatNumber(group.totalOnHand)} available</Paragraph>
+                            <StatusBadge status={group.stockState} />
+                          </XStack>
+                        </YStack>
+                      }
+                      trailing={
+                        <Button
+                          theme={isOos ? undefined : 'accent'}
+                          bg={isOos ? '$bgElevated' : undefined}
+                          borderWidth={isOos ? 1 : 0}
+                          borderColor="$borderSubtle"
+                          disabled={isOos}
+                          onPress={() => {
+                            if (isOos) return
+                            if (group.variants.length === 1) {
+                              addVariantToCart(group.variants[0])
+                              return
+                            }
+                            setVariantPickerItems(group.variants)
+                            setVariantPickerOpen(true)
+                          }}
+                        >
+                          {isOos ? 'OOS' : group.variants.length === 1 ? 'Add' : 'Choose'}
+                        </Button>
+                      }
+                    />
+                  )
+                })}
+              </YStack>
+            )}
+
+            {status === 'CanLoadMore' ? (
+              <XStack justify="center"><Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" onPress={() => loadMore(24)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">Load more</Paragraph></Button></XStack>
+            ) : null}
+          </YStack>
+        ) : (
+          <XStack gap="$4" items="flex-start">
+            <YStack flex={1} gap="$3">
+              <XStack items="center" gap="$2" bg="$color3" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">
+                <Search size={16} color="$color8" />
+                <Input value={search} onChangeText={setSearch} placeholder="Search products, codes, or barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
+              </XStack>
+              <XStack gap="$2" flexWrap="wrap">
+                <SectionCard flex={1} p="$3">
+                  <Paragraph color="$color8" fontSize="$1" textTransform="uppercase" letterSpacing={1.1}>Category</Paragraph>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <XStack gap="$2" pt="$2">
+                      <Button size="$2.5" bg={categoryId === null ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === null ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(null)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">All</Paragraph></Button>
+                      {(categories ?? []).map((category) => (
+                        <Button key={category._id} size="$2.5" bg={categoryId === category._id ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === category._id ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(category._id)}>
+                          {category.name}
+                        </Button>
+                      ))}
+                    </XStack>
+                  </ScrollView>
+                </SectionCard>
+              </XStack>
+              <XStack gap="$3" flexWrap="wrap">
+                {productGroups.map((group) => {
+                  const isOos = group.stockState === 'out_of_stock'
+                  return (
+                    <SectionCard key={group.productId} style={{ width: 290 }}>
+                      <XStack gap="$3" items="center">
+                        <ProductImage uri={group.mediaUrl} size={58} label={group.productCode} />
+                        <YStack flex={1} gap="$1">
+                          <Paragraph color="$color12" fontSize="$4" fontWeight="800" numberOfLines={1}>{group.productName}</Paragraph>
+                          <Paragraph color="$color10" fontSize="$2">{group.productCode} · {group.variants.length} variants</Paragraph>
+                        </YStack>
+                      </XStack>
+                      <XStack justify="space-between" items="center">
+                        <Paragraph color="$color12" fontSize="$6" fontWeight="900">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>
+                        <StatusBadge status={group.stockState} />
+                      </XStack>
+                      <XStack gap="$2">
+                        <Button
+                          flex={1}
+                          bg="$color3"
+                          borderWidth={1}
+                          borderColor="$borderColor"
+                          hoverStyle={{ bg: '$color4' }}
+                          onPress={() => setDetailsProductId(group.productId)}
+                        >
+                          <Paragraph color="$color12" fontSize="$2" fontWeight="700">Details</Paragraph>
+                        </Button>
+                        <Button
+                          flex={1}
+                          theme={isOos ? undefined : 'accent'}
+                          bg={isOos ? '$color3' : undefined}
+                          borderWidth={isOos ? 1 : 0}
+                          borderColor="$borderColor"
+                          disabled={isOos}
+                          onPress={() => {
+                            if (isOos) return
+                            if (group.variants.length === 1) {
+                              addVariantToCart(group.variants[0])
+                              return
+                            }
+                            setVariantPickerItems(group.variants)
+                            setVariantPickerOpen(true)
+                          }}
+                        >
+                          {isOos ? 'Out of stock' : group.variants.length === 1 ? 'Add to cart' : 'Choose'}
+                        </Button>
+                      </XStack>
+                    </SectionCard>
+                  )
+                })}
+              </XStack>
             </YStack>
-          )}
-
-          {status === 'CanLoadMore' ? (
-            <XStack justify="center"><Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" onPress={() => loadMore(24)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">Load more</Paragraph></Button></XStack>
-          ) : null}
-        </YStack>
-      ) : (
-        <XStack gap="$4" items="flex-start">
-          <YStack flex={1} gap="$3">
-            <XStack items="center" gap="$2" bg="$color3" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">
-              <Search size={16} color="$color8" />
-              <Input value={search} onChangeText={setSearch} placeholder="Search products, codes, or barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
-            </XStack>
-            <XStack gap="$2" flexWrap="wrap">
-              <SectionCard flex={1} p="$3">
-                <Paragraph color="$color8" fontSize="$1" textTransform="uppercase" letterSpacing={1.1}>Category</Paragraph>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <XStack gap="$2" pt="$2">
-                    <Button size="$2.5" bg={categoryId === null ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === null ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(null)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">All</Paragraph></Button>
-                    {(categories ?? []).map((category) => (
-                      <Button key={category._id} size="$2.5" bg={categoryId === category._id ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === category._id ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(category._id)}>
-                        {category.name}
-                      </Button>
-                    ))}
-                  </XStack>
-                </ScrollView>
-              </SectionCard>
-            </XStack>
-            <XStack gap="$3" flexWrap="wrap">
-              {productGroups.map((group) => {
-                const isOos = group.stockState === 'out_of_stock'
-                return (
-                  <SectionCard key={group.productId} style={{ width: 290 }}>
-                    <XStack gap="$3" items="center">
-                      <ProductImage uri={group.mediaUrl} size={58} label={group.productCode} />
-                      <YStack flex={1} gap="$1">
-                        <Paragraph color="$color12" fontSize="$4" fontWeight="800" numberOfLines={1}>{group.productName}</Paragraph>
-                        <Paragraph color="$color10" fontSize="$2">{group.productCode} · {group.variants.length} variants</Paragraph>
-                      </YStack>
-                    </XStack>
-                    <XStack justify="space-between" items="center">
-                      <Paragraph color="$color12" fontSize="$6" fontWeight="900">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>
-                      <StatusBadge status={group.stockState} />
-                    </XStack>
-                    <XStack gap="$2">
-                      <Button
-                        flex={1}
-                        bg="$color3"
-                        borderWidth={1}
-                        borderColor="$borderColor"
-                        hoverStyle={{ bg: '$color4' }}
-                        onPress={() => setDetailsProductId(group.productId)}
-                      >
-                        <Paragraph color="$color12" fontSize="$2" fontWeight="700">Details</Paragraph>
-                      </Button>
-                      <Button
-                        flex={1}
-                        theme={isOos ? undefined : 'accent'}
-                        bg={isOos ? '$color3' : undefined}
-                        borderWidth={isOos ? 1 : 0}
-                        borderColor="$borderColor"
-                        disabled={isOos}
-                        onPress={() => {
-                          if (isOos) return
-                          if (group.variants.length === 1) {
-                            addVariantToCart(group.variants[0])
-                            return
-                          }
-                          setVariantPickerItems(group.variants)
-                          setVariantPickerOpen(true)
-                        }}
-                      >
-                        {isOos ? 'Out of stock' : group.variants.length === 1 ? 'Add to cart' : 'Choose'}
-                      </Button>
-                    </XStack>
-                  </SectionCard>
-                )
-              })}
-            </XStack>
-          </YStack>
-          <YStack width={430} position="sticky" style={{ top: 92 } as any}>
-            {checkoutTerminal}
-          </YStack>
-        </XStack>
-      )}
+            <YStack width={430} position="sticky" style={{ top: 92 } as any}>
+              {checkoutTerminal}
+            </YStack>
+          </XStack>
+        )}
 
       </ScreenScaffold>
 
@@ -658,7 +658,7 @@ export function PosScreen() {
           <XStack justify="space-between" items="center" flexWrap="wrap" gap="$4">
             <YStack flex={1} gap="$3" style={{ minWidth: 220 }}>
               <SectionCard bg="$bgElevated">
-                <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Amount payable</Paragraph>
+                <Paragraph color={desktop ? '$color7' : '$color10'} fontSize="$2">Amount payable</Paragraph>
                 <Paragraph color="$accentStrong" fontSize="$8" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
                 {customerName ? <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Customer: {customerName}</Paragraph> : null}
               </SectionCard>

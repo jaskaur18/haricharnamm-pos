@@ -441,7 +441,7 @@ export function ReportsScreen() {
 
   const variantPool = usePaginatedQuery(
     convexApi.inventory.list,
-    { search: null, categoryId, subcategoryId, status: 'active', stockState: 'all' },
+    { search: null, categoryId: categoryId as any, subcategoryId: subcategoryId as any, status: 'active', stockState: 'all' },
     { initialNumItems: 120 },
   )
   const variantOptions = (variantPool.results ?? []) as any[]
@@ -511,10 +511,10 @@ export function ReportsScreen() {
     toDate: datePreset === 'custom' ? toDate || null : null,
     datePreset,
     compareMode,
-    categoryId,
-    subcategoryId,
-    productId,
-    variantId,
+    categoryId: categoryId as any,
+    subcategoryId: subcategoryId as any,
+    productId: productId as any,
+    variantId: variantId as any,
     paymentMethod,
     returnStatus,
     stockState,

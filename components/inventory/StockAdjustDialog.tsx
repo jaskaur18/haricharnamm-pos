@@ -77,7 +77,7 @@ export function StockAdjustDialog({
     setIsSaving(true)
     try {
       const result = await adjustStock({
-        variantId: item._id,
+        variantId: item._id as any,
         quantityDelta: Number(quantityDelta || 0),
         reason: reason.trim(),
         note: fullNote,

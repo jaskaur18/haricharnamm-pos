@@ -55,7 +55,7 @@ export function SettingsScreen() {
     if (!form.name.trim()) { toast.show('Name required'); return }
     setIsSaving(true)
     try {
-      await saveCategory({ categoryId: form.categoryId, name: form.name.trim(), parentCategoryId: form.parentCategoryId, isActive: form.isActive })
+      await saveCategory({ categoryId: form.categoryId as any, name: form.name.trim(), parentCategoryId: form.parentCategoryId as any, isActive: form.isActive })
       hapticMedium()
       toast.show(form.categoryId ? 'Updated' : 'Created')
       setEditorOpen(false)

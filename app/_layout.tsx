@@ -1,6 +1,5 @@
-import '../tamagui.generated.css'
-
 import { useEffect } from 'react'
+import { Platform } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { ConvexProvider } from 'convex/react'
 import { DarkTheme, ThemeProvider } from '@react-navigation/native'
@@ -9,6 +8,10 @@ import { useFonts } from 'expo-font'
 import { SplashScreen, Stack } from 'expo-router'
 import { Provider } from 'components/Provider'
 import { convex } from 'lib/convex'
+
+if (Platform.OS === 'web') {
+  require('../tamagui.generated.css')
+}
 
 export {
   // Catch any errors thrown by the Layout component.

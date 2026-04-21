@@ -169,7 +169,7 @@ export function PosScreen() {
   const debouncedSearch = useDebounce(search, 250)
   const { results, status, loadMore } = usePaginatedQuery(
     convexApi.pos.catalogSearch,
-    { search: debouncedSearch.trim() || null, categoryId, subcategoryId },
+    { search: debouncedSearch.trim() || null, categoryId: categoryId as any, subcategoryId: subcategoryId as any },
     { initialNumItems: 24 },
   )
   const catalog = (results ?? []) as CatalogItem[]
@@ -188,7 +188,7 @@ export function PosScreen() {
       }
       try {
         const response = await convex.query(convexApi.pos.previewSale, {
-          items: cart.map((line) => ({ variantId: line.variantId, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
+          items: cart.map((line) => ({ variantId: line.variantId as any, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
           orderDiscount: Number(orderDiscount || 0),
         })
         if (!cancelled) {
@@ -248,7 +248,7 @@ export function PosScreen() {
     setIsSubmitting(true)
     try {
       const result = await createSale({
-        items: cart.map((line) => ({ variantId: line.variantId, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
+        items: cart.map((line) => ({ variantId: line.variantId as any, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
         orderDiscount: Number(orderDiscount || 0),
         paymentMethod,
         paymentNote: paymentNote.trim() || null,

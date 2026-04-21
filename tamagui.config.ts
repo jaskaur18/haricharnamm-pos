@@ -1,16 +1,5 @@
 import { defaultConfig } from '@tamagui/config/v5'
-import { createAnimations } from '@tamagui/animations-css'
 import { createTamagui } from 'tamagui'
-
-const animations = createAnimations({
-  fast: 'ease-in 150ms',
-  medium: 'ease-in 300ms',
-  slow: 'ease-in 450ms',
-  bouncy: 'ease-in 200ms',
-  lazy: 'ease-in 600ms',
-  quick: 'ease-in 100ms',
-  tooltip: 'ease-in 150ms',
-})
 
 const darkTheme = {
   ...defaultConfig.themes.dark,
@@ -72,7 +61,6 @@ const darkTheme = {
 
 export const config = createTamagui({
   ...defaultConfig,
-  animations,
   media: {
     ...defaultConfig.media,
     maxXs: { maxWidth: 520 },

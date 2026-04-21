@@ -64,7 +64,7 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
   const toast = useToastController()
   const convex = useConvex()
   const createReturn = useMutation(convexApi.pos.createReturn)
-  const sale = useQuery(convexApi.pos.saleDetail, saleId ? { saleId } : 'skip') as SaleDetail | undefined
+  const sale = useQuery(convexApi.pos.saleDetail, saleId ? { saleId: saleId as any } : 'skip') as SaleDetail | undefined
   const [returnOpen, setReturnOpen] = useState(false)
   const [quantities, setQuantities] = useState<Record<string, string>>({})
   const [refundMethod, setRefundMethod] = useState<'cash' | 'upi_mock'>('cash')
@@ -90,7 +90,7 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
     if (items.length === 0) { toast.show('Select quantities'); return }
     setIsSubmitting(true)
     try {
-      const r = await createReturn({ saleId: sale._id, items, refundMethod, refundNote: refundNote.trim() || null })
+      const r = await createReturn({ saleId: sale._id as any, items: items.map(i => ({ ...i, saleItemId: i.saleItemId as any })), refundMethod, refundNote: refundNote.trim() || null })
       hapticHeavy()
       toast.show('Return recorded', { message: `${r.returnCode} updated.` })
       setReturnOpen(false)

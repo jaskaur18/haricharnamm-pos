@@ -65,7 +65,7 @@ export function InventoryScreen() {
   const debouncedSearch = useDebounce(search, 300)
   const { results, status: pageStatus, loadMore } = usePaginatedQuery(
     convexApi.inventory.list,
-    { search: debouncedSearch.trim() || null, categoryId, subcategoryId, status, stockState },
+    { search: debouncedSearch.trim() || null, categoryId: categoryId as any, subcategoryId: subcategoryId as any, status, stockState },
     { initialNumItems: 24 },
   )
   const items = (results ?? []) as InventoryItem[]

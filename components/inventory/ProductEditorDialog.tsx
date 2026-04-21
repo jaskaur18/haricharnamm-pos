@@ -77,8 +77,8 @@ export function ProductEditorDialog({
   const toast = useToastController()
   const media = useMedia()
   const desktop = !media.maxMd
-  const detail = useQuery(convexApi.inventory.detail, productId ? { productId } : 'skip') as ProductDetail | undefined
-  const gallery = useQuery(convexApi.pos.productMediaGallery, productId ? { productId } : 'skip' as any) as any[] | undefined
+  const detail = useQuery(convexApi.inventory.detail, productId ? { productId: productId as any } : 'skip') as ProductDetail | undefined
+  const gallery = useQuery(convexApi.pos.productMediaGallery, productId ? { productId: productId as any } : 'skip' as any) as any[] | undefined
   const createProduct = useMutation(convexApi.inventory.create)
   const updateProduct = useMutation(convexApi.inventory.update)
   const generateUploadUrl = useMutation(convexApi.inventory.generateUploadUrl)
@@ -149,7 +149,7 @@ export function ProductEditorDialog({
       setIsUploading(true)
       const uploadUrl = await generateUploadUrl({})
       const storageId = await uploadSelectedImage(asset as any, uploadUrl)
-      await attachMedia({ productId, variantId: null, storageId, caption: null, sortOrder: gallery ? gallery.length : 0 })
+      await attachMedia({ productId: productId as any, variantId: null, storageId: storageId as any, caption: null, sortOrder: gallery ? gallery.length : 0 })
       toast.show('Image added')
     } catch (e) {
       toast.show('Upload failed', { message: getErrorMessage(e) })
@@ -190,14 +190,14 @@ export function ProductEditorDialog({
 
     setIsSaving(true)
     try {
-      const result = productId ? await updateProduct({ productId, ...payload }) : await createProduct(payload)
+      const result = productId ? await updateProduct({ productId: productId as any, ...(payload as any) }) : await createProduct(payload as any)
 
       // Upload all pending images
       for (let i = 0; i < pendingImages.length; i++) {
         const img = pendingImages[i]
         const uploadUrl = await generateUploadUrl({})
         const storageId = await uploadSelectedImage(img as any, uploadUrl)
-        await attachMedia({ productId: result.productId, variantId: null, storageId, caption: null, sortOrder: i })
+        await attachMedia({ productId: result.productId as any, variantId: null, storageId: storageId as any, caption: null, sortOrder: i })
       }
 
       hapticSuccess()

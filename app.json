@@ -63,7 +63,8 @@
           "cameraPermission": "Allow HARI CHARNAMM POS to scan product barcodes."
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

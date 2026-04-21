@@ -7,6 +7,7 @@ import { Button, Input, Paragraph, ScrollView, Spinner, TextArea, XStack, YStack
 import { convexApi } from 'lib/convex'
 import { CategoryNode, getSubcategoryOptions } from 'lib/categories'
 import { getErrorMessage } from 'lib/errors'
+import { hapticMedium, hapticSuccess } from 'lib/haptics'
 import { pickSingleImage, uploadSelectedImage } from 'lib/upload'
 import { FormField } from 'components/ui/FormField'
 import { ProductImage } from 'components/ui/ProductImage'
@@ -179,6 +180,13 @@ export function ProductEditorDialog({
     }
 
     if (payload.variants.some((v) => !v.label)) { toast.show('Each variant needs a label'); return }
+    
+    // Check for duplicate variant labels
+    const labels = payload.variants.map(v => v.label.toLowerCase())
+    if (new Set(labels).size !== labels.length) {
+      toast.show('Variant labels must be unique', { message: 'You have duplicate variant options.' })
+      return
+    }
 
     setIsSaving(true)
     try {
@@ -192,6 +200,7 @@ export function ProductEditorDialog({
         await attachMedia({ productId: result.productId, variantId: null, storageId, caption: null, sortOrder: i })
       }
 
+      hapticSuccess()
       toast.show(productId ? 'Product updated' : 'Product created', { message: `${result.productCode} is ready.` })
       onOpenChange(false)
     } catch (e) {

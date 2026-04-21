@@ -1,6 +1,7 @@
 import { Check, ChevronDown } from '@tamagui/lucide-icons-2'
 import { Button, Paragraph, XStack, YStack, useMedia } from 'tamagui'
 import { useEffect, useRef, useState } from 'react'
+import { Platform, ActionSheetIOS } from 'react-native'
 import { ResponsiveDialog } from './ResponsiveDialog'
 import { FormField } from './FormField'
 
@@ -35,9 +36,9 @@ export function SelectionField({
   const containerRef = useRef<HTMLDivElement>(null)
   const selected = options.find((o) => o.value === value)
 
-  // Close dropdown on outside click (desktop)
+  // Close dropdown on outside click (desktop web only)
   useEffect(() => {
-    if (!open || !desktop) return
+    if (!open || !desktop || Platform.OS !== 'web') return
     function handleClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
     }
@@ -45,30 +46,50 @@ export function SelectionField({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [open, desktop])
 
-  // Close on Escape
+  // Close on Escape (web only)
   useEffect(() => {
-    if (!open) return
+    if (!open || Platform.OS !== 'web') return
     function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [open])
 
+  const handlePress = () => {
+    if (!desktop && Platform.OS === 'ios' && options.length <= 10) {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...options.map(o => o.label), 'Cancel'],
+          cancelButtonIndex: options.length,
+          title: label
+        },
+        index => {
+          if (index < options.length) {
+            onChange(options[index].value)
+          }
+        }
+      )
+      return
+    }
+    setOpen(!open)
+  }
+
   const trigger = (
     <Button
-      onPress={() => setOpen(!open)}
-      bg="$color3"
-      borderWidth={0}
-      hoverStyle={{ bg: '$color4' }}
-      pressStyle={{ bg: '$color4' }}
+      onPress={handlePress}
+      bg={desktop ? '$color3' : '$bgElevated'}
+      borderWidth={1}
+      borderColor={desktop ? '$borderColor' : '$borderSubtle'}
+      hoverStyle={{ bg: desktop ? '$color4' : '$bgMuted', borderColor: desktop ? '$borderColorHover' : '$borderStrong' }}
+      pressStyle={{ bg: desktop ? '$color4' : '$bgMuted' }}
       justify="space-between"
-      rounded="$3"
+      rounded="$5"
       px="$3"
-      height={36}
+      height={42}
     >
-      <Paragraph color={selected ? '$color12' : '$color8'} flex={1} numberOfLines={1} fontSize={12}>
+      <Paragraph color={selected ? (desktop ? '$color12' : '$textPrimary') : (desktop ? '$color10' : '$textMuted')} flex={1} numberOfLines={1} fontSize={12}>
         {selected?.label ?? placeholder}
       </Paragraph>
-      <ChevronDown size={12} color="$color7" />
+      <ChevronDown size={14} color={desktop ? '$color7' : '$textFaint'} />
     </Button>
   )
 
@@ -81,9 +102,9 @@ export function SelectionField({
 
           {open ? (
             <YStack
-              bg="$color2"
+              bg={desktop ? '$color2' : '$bgSurface'}
               borderWidth={1}
-              borderColor="$borderColor"
+              borderColor={desktop ? '$borderColor' : '$borderSubtle'}
               rounded="$4"
               style={{
                 position: 'absolute' as any,
@@ -104,24 +125,24 @@ export function SelectionField({
                     <Button
                       key={option.value ?? '__null__'}
                       onPress={() => { onChange(option.value); setOpen(false) }}
-                      bg={active ? '$color4' : 'transparent'}
+                      bg={active ? (desktop ? '$color4' : '$accentSoft') : 'transparent'}
                       borderWidth={0}
                       rounded="$0"
                       px="$3"
                       py="$2"
-                      hoverStyle={{ bg: '$color3' }}
-                      pressStyle={{ bg: '$color4' }}
+                      hoverStyle={{ bg: desktop ? '$color3' : '$bgElevated' }}
+                      pressStyle={{ bg: desktop ? '$color4' : '$accentSoft' }}
                       justify="space-between"
                     >
                       <YStack flex={1} gap="$0.25">
-                        <Paragraph color={active ? '$color12' : '$color11'} fontSize={12} fontWeight={active ? '700' : '500'} numberOfLines={1}>
+                        <Paragraph color={active ? (desktop ? '$color12' : '$textPrimary') : (desktop ? '$color11' : '$textSecondary')} fontSize={12} fontWeight={active ? '700' : '500'} numberOfLines={1}>
                           {option.label}
                         </Paragraph>
                         {option.description ? (
-                          <Paragraph color="$color7" fontSize={10}>{option.description}</Paragraph>
+                          <Paragraph color={desktop ? '$color7' : '$textFaint'} fontSize={10}>{option.description}</Paragraph>
                         ) : null}
                       </YStack>
-                      {active ? <Check size={12} color="$accentBackground" /> : null}
+                      {active ? <Check size={12} color={desktop ? '$accentBackground' : '$accent'} /> : null}
                     </Button>
                   )
                 })}
@@ -148,24 +169,24 @@ export function SelectionField({
               <Button
                 key={option.value ?? '__null__'}
                 onPress={() => { onChange(option.value); setOpen(false) }}
-                bg={active ? '$color4' : '$color2'}
+                bg={active ? '$accentSoft' : '$bgSurface'}
                 borderWidth={0}
-                rounded="$4"
+                rounded="$5"
                 px="$3"
                 py="$2.5"
-                hoverStyle={{ bg: '$color3' }}
-                pressStyle={{ bg: '$color4' }}
+                hoverStyle={{ bg: '$bgElevated' }}
+                pressStyle={{ bg: '$accentSoft' }}
                 justify="space-between"
               >
                 <YStack flex={1} gap="$0.5">
-                  <Paragraph color={active ? '$color12' : '$color11'} fontWeight={active ? '700' : '500'}>
+                  <Paragraph color={active ? '$textPrimary' : '$textSecondary'} fontWeight={active ? '700' : '500'}>
                     {option.label}
                   </Paragraph>
                   {option.description ? (
-                    <Paragraph color="$color7" fontSize="$2">{option.description}</Paragraph>
+                    <Paragraph color="$textFaint" fontSize="$2">{option.description}</Paragraph>
                   ) : null}
                 </YStack>
-                {active ? <Check size={16} color="$accentBackground" /> : null}
+                {active ? <Check size={16} color="$accent" /> : null}
               </Button>
             )
           })}

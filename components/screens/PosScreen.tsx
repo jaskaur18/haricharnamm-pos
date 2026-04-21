@@ -1,22 +1,28 @@
-import { useEffect, useState } from 'react'
-import { Minus, Plus, ReceiptText, Search, ShoppingCart, Trash2, X } from '@tamagui/lucide-icons-2'
+import { useEffect, useMemo, useState } from 'react'
+import { Platform } from 'react-native'
+import { useRouter } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ScanBarcode, Minus, Plus, ReceiptText, Search, ShoppingCart, Trash2, X } from '@tamagui/lucide-icons-2'
 import { useConvex, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
 import { Button, Input, Paragraph, ScrollView, Spinner, XStack, YStack, useMedia } from 'tamagui'
+import QRCode from 'react-native-qrcode-svg'
 import { convexApi } from 'lib/convex'
 import { CategoryNode, getSubcategoryOptions } from 'lib/categories'
 import { getErrorMessage } from 'lib/errors'
 import { formatCurrency, formatNumber } from 'lib/format'
+import { hapticError, hapticLight, hapticMedium, hapticSuccess } from 'lib/haptics'
 import { buildReceiptHtml, handleReceiptOutput, saleDetailToReceipt } from 'lib/receipt'
+import { useDebounce } from 'lib/useDebounce'
 import { ProductImage } from 'components/ui/ProductImage'
 import { ProductShowcaseDialog } from 'components/ui/ProductShowcaseDialog'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
-import { SelectionField } from 'components/ui/SelectionField'
 import { StatusBadge } from 'components/ui/StatusBadge'
-import { useRouter } from 'expo-router'
-import QRCode from 'react-native-qrcode-svg'
-
-/* ─── Types ─── */
+import { BarcodeScannerDialog } from 'components/pos/BarcodeScannerDialog'
+import { ScreenScaffold } from 'components/ui/ScreenScaffold'
+import { ScreenHeader, HeaderAction } from 'components/ui/ScreenHeader'
+import { SectionCard } from 'components/ui/SectionCard'
+import { ListRow } from 'components/ui/ListRow'
 
 type CatalogItem = {
   _id: string
@@ -84,11 +90,8 @@ type ProductGroup = {
   stockState: 'in_stock' | 'low_stock' | 'out_of_stock'
 }
 
-/* ─── Helpers ─── */
-
 function groupCatalogItems(items: CatalogItem[]): ProductGroup[] {
   const map = new Map<string, ProductGroup>()
-
   for (const item of items) {
     const existing = map.get(item.productId)
     if (!existing) {
@@ -109,28 +112,18 @@ function groupCatalogItems(items: CatalogItem[]): ProductGroup[] {
     existing.minPrice = Math.min(existing.minPrice, item.salePrice)
     existing.maxPrice = Math.max(existing.maxPrice, item.salePrice)
     existing.totalOnHand += item.onHand
-    if (item.stockState === 'out_of_stock') {
-      existing.stockState = existing.stockState === 'in_stock' ? 'low_stock' : existing.stockState
-    }
-    if (item.stockState === 'low_stock' && existing.stockState === 'in_stock') {
-      existing.stockState = 'low_stock'
-    }
+    if (item.stockState === 'low_stock' && existing.stockState === 'in_stock') existing.stockState = 'low_stock'
+    if (item.stockState === 'out_of_stock') existing.stockState = 'out_of_stock'
   }
   return Array.from(map.values())
 }
 
-/* ProductShowcaseDialog is now imported from components/ui/ProductShowcaseDialog */
-
-/* ═══════════════════════════════════════════════════════════════════
-   POS SCREEN — True split-pane layout
-   Left:  scrollable product catalog (fills remaining width)
-   Right: fixed-height checkout terminal (400px wide, pinned)
-   ═══════════════════════════════════════════════════════════════════ */
-
 export function PosScreen() {
   const router = useRouter()
+  const insets = useSafeAreaInsets()
   const media = useMedia()
-  const desktop = !media.maxMd
+  const mobile = media.maxMd
+  const desktop = !mobile
   const toast = useToastController()
   const convex = useConvex()
   const categories = useQuery(convexApi.inventory.listCategories, { includeInactive: true }) as CategoryNode[] | undefined
@@ -155,76 +148,107 @@ export function PosScreen() {
   const [cartOpen, setCartOpen] = useState(false)
   const [showUpiDialog, setShowUpiDialog] = useState(false)
   const [upiTimer, setUpiTimer] = useState(300)
+  const [scannerOpen, setScannerOpen] = useState(false)
 
-  // UPI timer
   useEffect(() => {
     if (showUpiDialog && upiTimer > 0) {
-      const iv = setInterval(() => setUpiTimer((t) => t - 1), 1000)
+      const iv = setInterval(() => setUpiTimer((value) => value - 1), 1000)
       return () => clearInterval(iv)
     }
   }, [showUpiDialog, upiTimer])
 
-  // Cascade subcategory on category change
   useEffect(() => {
-    if (!categoryId) { setSubcategoryId(null); return }
-    const valid = new Set(getSubcategoryOptions(categories, categoryId).map((o) => o.value))
+    if (!categoryId) {
+      setSubcategoryId(null)
+      return
+    }
+    const valid = new Set(getSubcategoryOptions(categories, categoryId).map((option) => option.value))
     if (subcategoryId && !valid.has(subcategoryId)) setSubcategoryId(null)
   }, [categoryId, subcategoryId, categories])
 
-  // Catalog query
+  const debouncedSearch = useDebounce(search, 250)
   const { results, status, loadMore } = usePaginatedQuery(
     convexApi.pos.catalogSearch,
-    { search: search.trim() || null, categoryId, subcategoryId },
+    { search: debouncedSearch.trim() || null, categoryId, subcategoryId },
     { initialNumItems: 24 },
   )
   const catalog = (results ?? []) as CatalogItem[]
-  const productGroups = groupCatalogItems(catalog)
+  const productGroups = useMemo(() => groupCatalogItems(catalog), [catalog])
 
-  // Live preview
   useEffect(() => {
     let cancelled = false
     async function run() {
       if (cart.length === 0) {
-        setPreview({ lines: [], summary: { subtotal: 0, lineDiscountTotal: 0, orderDiscount: 0, total: 0, totalQty: 0, itemCount: 0 } })
+        setPreview({
+          lines: [],
+          summary: { subtotal: 0, lineDiscountTotal: 0, orderDiscount: 0, total: 0, totalQty: 0, itemCount: 0 },
+        })
         setPreviewError(null)
         return
       }
       try {
-        const r = (await convex.query(convexApi.pos.previewSale, {
-          items: cart.map((l) => ({ variantId: l.variantId, quantity: l.quantity, lineDiscount: Number(l.lineDiscount || 0) })),
+        const response = await convex.query(convexApi.pos.previewSale, {
+          items: cart.map((line) => ({ variantId: line.variantId, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
           orderDiscount: Number(orderDiscount || 0),
-        })) as SalePreview
-        if (!cancelled) { setPreview(r); setPreviewError(null) }
-      } catch (e) {
-        if (!cancelled) { setPreview(null); setPreviewError(getErrorMessage(e)) }
+        })
+        if (!cancelled) {
+          setPreview(response as SalePreview)
+          setPreviewError(null)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPreview(null)
+          setPreviewError(getErrorMessage(error))
+        }
       }
     }
     void run()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [cart, orderDiscount, convex])
 
   function addVariantToCart(item: CatalogItem) {
-    setCart((c) => {
-      const ex = c.find((l) => l.variantId === item._id)
-      if (!ex) return [...c, { variantId: item._id, productId: item.productId, productCode: item.productCode, displayCode: item.displayCode, productName: item.productName, variantLabel: item.optionSummary || item.label, quantity: 1, unitPrice: item.salePrice, lineDiscount: '0', onHand: item.onHand, mediaUrl: item.mediaUrl }]
-      if (ex.quantity >= item.onHand) { toast.show('Max stock reached'); return c }
-      return c.map((l) => l.variantId === item._id ? { ...l, quantity: l.quantity + 1 } : l)
+    setCart((current) => {
+      const existing = current.find((line) => line.variantId === item._id)
+      if (!existing) {
+        hapticMedium()
+        return [...current, {
+          variantId: item._id,
+          productId: item.productId,
+          productCode: item.productCode,
+          displayCode: item.displayCode,
+          productName: item.productName,
+          variantLabel: item.optionSummary || item.label,
+          quantity: 1,
+          unitPrice: item.salePrice,
+          lineDiscount: '0',
+          onHand: item.onHand,
+          mediaUrl: item.mediaUrl,
+        }]
+      }
+      if (existing.quantity >= item.onHand) {
+        toast.show('Max stock reached')
+        return current
+      }
+      hapticLight()
+      return current.map((line) => line.variantId === item._id ? { ...line, quantity: line.quantity + 1 } : line)
     })
   }
 
   function updateQty(variantId: string, qty: number) {
-    setCart((c) => c.map((l) => l.variantId !== variantId ? l : { ...l, quantity: Math.max(1, Math.min(qty, l.onHand)) }))
+    setCart((current) => current.map((line) => line.variantId !== variantId ? line : { ...line, quantity: Math.max(1, Math.min(qty, line.onHand)) }))
   }
 
   function removeLine(variantId: string) {
-    setCart((c) => c.filter((l) => l.variantId !== variantId))
+    setCart((current) => current.filter((line) => line.variantId !== variantId))
   }
 
   async function executeCheckout() {
     setIsSubmitting(true)
     try {
       const result = await createSale({
-        items: cart.map((l) => ({ variantId: l.variantId, quantity: l.quantity, lineDiscount: Number(l.lineDiscount || 0) })),
+        items: cart.map((line) => ({ variantId: line.variantId, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
         orderDiscount: Number(orderDiscount || 0),
         paymentMethod,
         paymentNote: paymentNote.trim() || null,
@@ -235,420 +259,415 @@ export function PosScreen() {
       const sale = await convex.query(convexApi.pos.saleDetail, { saleId: result.saleId })
       const receipt = saleDetailToReceipt(sale as any)
       if (receipt) await handleReceiptOutput(buildReceiptHtml(receipt), receipt.saleCode)
+      hapticSuccess()
       toast.show('Sale completed', { message: `${result.saleCode} saved.` })
-      setCart([]); setOrderDiscount('0'); setCustomerName(''); setCustomerPhone(''); setPaymentMethod('cash'); setPaymentNote(''); setNotes(''); setCartOpen(false); setShowUpiDialog(false)
+      setCart([])
+      setOrderDiscount('0')
+      setCustomerName('')
+      setCustomerPhone('')
+      setPaymentMethod('cash')
+      setPaymentNote('')
+      setNotes('')
+      setCartOpen(false)
+      setShowUpiDialog(false)
       router.replace(`/sales?saleId=${result.saleId}` as any)
-    } catch (e) {
-      toast.show('Checkout failed', { message: getErrorMessage(e) })
+    } catch (error) {
+      toast.show('Checkout failed', { message: getErrorMessage(error) })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   function handleCheckout() {
-    if (cart.length === 0) { toast.show('Cart is empty'); return }
-    if (previewError) { toast.show('Fix errors first', { message: previewError }); return }
-    if (paymentMethod === 'upi_mock') { setUpiTimer(300); setShowUpiDialog(true); return }
+    if (cart.length === 0) {
+      toast.show('Cart is empty')
+      return
+    }
+    if (previewError) {
+      toast.show('Fix errors first', { message: previewError })
+      return
+    }
+    if (paymentMethod === 'upi_mock') {
+      setUpiTimer(300)
+      setShowUpiDialog(true)
+      return
+    }
     void executeCheckout()
   }
 
-  /* ── Checkout Terminal widget (used in both desktop inline + mobile sheet) ── */
+  async function handleBarcodeScanned(data: string) {
+    setScannerOpen(false)
+    try {
+      const match = await convex.query(convexApi.pos.resolveBarcode, { barcode: data })
+      if (!match) {
+        hapticError()
+        toast.show('Not found', { message: `Barcode ${data} not recognized.` })
+        return
+      }
+      if (match.stockState === 'out_of_stock') {
+        hapticError()
+        toast.show('Out of stock', { message: `${match.optionSummary || match.label} is out of stock.` })
+        return
+      }
+      hapticSuccess()
+      addVariantToCart(match as any)
+      toast.show('Added to cart', { message: match.optionSummary || match.label })
+    } catch {
+      toast.show('Scan Error', { message: 'Could not lookup barcode.' })
+    }
+  }
+
   const checkoutTerminal = (
-    <YStack gap="$4" flex={1}>
-      {/* Cart header */}
+    <YStack gap="$3.5">
       <XStack justify="space-between" items="center">
-        <XStack items="center" gap="$2">
-          <ShoppingCart size={18} color="$color10" />
-          <Paragraph fontSize="$5" fontWeight="800">
-            Cart
-          </Paragraph>
-          {cart.length > 0 ? (
-            <YStack bg="$accentBackground" rounded="$10" px="$2" py="$0.25">
-              <Paragraph color="$accentColor" fontSize={11} fontWeight="800">{cart.length}</Paragraph>
-            </YStack>
-          ) : null}
-        </XStack>
-        {!desktop ? (
-          <Button size="$2" bg="transparent" borderWidth={0} onPress={() => setCartOpen(false)} p="$2" hoverStyle={{ bg: '$color3' }}><X size={18} color="$color10" /></Button>
+        <YStack gap="$0.5">
+          <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$6" fontWeight="900">Current Sale</Paragraph>
+          <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">{cart.length} line{cart.length === 1 ? '' : 's'} · {formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
+        </YStack>
+        {mobile ? (
+          <Button size="$2.5" bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" icon={<X size={14} />} onPress={() => setCartOpen(false)}>
+            Close
+          </Button>
         ) : null}
       </XStack>
 
-      {/* Cart items */}
       {cart.length === 0 ? (
-        <YStack flex={1} items="center" justify="center" gap="$2" py="$6">
-          <YStack bg="$color3" rounded="$10" p="$4">
-            <ShoppingCart size={32} color="$color7" />
-          </YStack>
-          <Paragraph color="$color8" fontSize="$2">Tap products to add them here</Paragraph>
-        </YStack>
+        <SectionCard items="center" justify="center" py="$7">
+          <ShoppingCart size={28} color="#a2998f" />
+          <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">Cart is empty</Paragraph>
+          <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Browse products and tap add to start a sale.</Paragraph>
+        </SectionCard>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        <ScrollView style={{ maxHeight: mobile ? 320 : 420 }} showsVerticalScrollIndicator={false}>
           <YStack gap="$2">
             {cart.map((line) => {
-              const pl = preview?.lines.find((p) => p.variantId === line.variantId)
+              const previewLine = preview?.lines.find((entry) => entry.variantId === line.variantId)
               return (
-                <YStack key={line.variantId} bg="$color2" rounded="$4" p="$3" gap="$2.5" borderWidth={1} borderColor="$borderColor">
-                  {/* Product info row */}
-                  <XStack gap="$2" items="center">
-                    <ProductImage uri={line.mediaUrl} size={40} label={line.productCode} />
+                <SectionCard key={line.variantId} p="$3">
+                  <XStack gap="$2.5" items="center">
+                    <ProductImage uri={line.mediaUrl} size={44} label={line.productCode} />
                     <YStack flex={1} gap="$0.5">
-                      <Paragraph fontSize="$2" fontWeight="700" numberOfLines={1}>{line.productName}</Paragraph>
-                      <Paragraph color="$color8" fontSize={10}>{line.displayCode} · {line.variantLabel}</Paragraph>
+                      <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$3" fontWeight="800" numberOfLines={1}>{line.productName}</Paragraph>
+                      <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$1">{line.displayCode} · {line.variantLabel}</Paragraph>
                     </YStack>
                     <YStack items="flex-end">
-                      <Paragraph fontSize="$3" fontWeight="800">{pl ? formatCurrency(pl.lineTotal) : '—'}</Paragraph>
-                      <Paragraph color="$color8" fontSize={10}>@{formatCurrency(line.unitPrice)}</Paragraph>
+                      <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">{previewLine ? formatCurrency(previewLine.lineTotal) : '—'}</Paragraph>
+                      <Paragraph color={desktop ? '$color8' : '$textFaint'} fontSize="$1">@ {formatCurrency(line.unitPrice)}</Paragraph>
                     </YStack>
                   </XStack>
-
-                  {/* Controls row */}
                   <XStack justify="space-between" items="center">
-                    {/* Qty stepper */}
-                    <XStack items="center" bg="$color3" rounded="$3" overflow="hidden">
-                      <Button size="$2" bg="$color3" borderWidth={0} px="$2" py="$1.5" onPress={() => updateQty(line.variantId, line.quantity - 1)} pressStyle={{ bg: '$color4' }}>
-                        <Minus size={14} color="$color10" />
-                      </Button>
-                      <Paragraph fontWeight="800" fontSize="$3" style={{ minWidth: 30, textAlign: 'center' }}>{line.quantity}</Paragraph>
-                      <Button size="$2" bg="$color3" borderWidth={0} px="$2" py="$1.5" onPress={() => updateQty(line.variantId, line.quantity + 1)} pressStyle={{ bg: '$color4' }}>
-                        <Plus size={14} color="$color10" />
-                      </Button>
+                    <XStack items="center" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" overflow="hidden" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'}>
+                      <Button size="$2.5" bg="transparent" borderWidth={0} onPress={() => updateQty(line.variantId, line.quantity - 1)} icon={<Minus size={14} />} />
+                      <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$3" fontWeight="800" px="$2">{line.quantity}</Paragraph>
+                      <Button size="$2.5" bg="transparent" borderWidth={0} onPress={() => updateQty(line.variantId, line.quantity + 1)} icon={<Plus size={14} />} />
                     </XStack>
-
-                    <XStack gap="$2" items="center">
-                      {/* Line discount */}
-                      <XStack items="center" bg="$color3" rounded="$3" px="$2" height={32}>
-                        <Paragraph color="$color8" fontSize={11} mr="$1">₹</Paragraph>
+                    <XStack items="center" gap="$2">
+                      <XStack items="center" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} px="$2">
+                        <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$1">₹</Paragraph>
                         <Input
                           value={line.lineDiscount}
-                          onChangeText={(v) => setCart((c) => c.map((l) => l.variantId === line.variantId ? { ...l, lineDiscount: v } : l))}
+                          onChangeText={(value) => setCart((current) => current.map((item) => item.variantId === line.variantId ? { ...item, lineDiscount: value } : item))}
                           keyboardType="numeric"
                           placeholder="0"
-                          style={{ width: 36, textAlign: 'right' }}
                           bg="transparent"
                           borderWidth={0}
-                          fontSize={12}
-                          color="$color12"
+                          width={50}
+                          px="$1"
+                          color={desktop ? '$color12' : '$textPrimary'}
                         />
                       </XStack>
-                      {/* Delete */}
-                      <Button size="$2" bg="transparent" borderWidth={0} p="$1.5" onPress={() => removeLine(line.variantId)} pressStyle={{ scale: 0.9 }} hoverStyle={{ bg: '$color3' }}>
-                        <Trash2 size={14} color="$color8" />
-                      </Button>
+                      <Button size="$2.5" bg="$dangerSoft" borderWidth={0} icon={<Trash2 size={14} color="#ef8c82" />} onPress={() => removeLine(line.variantId)} />
                     </XStack>
                   </XStack>
-                </YStack>
+                </SectionCard>
               )
             })}
           </YStack>
         </ScrollView>
       )}
 
-      {/* ── Checkout form (always at bottom) ── */}
-      <YStack gap="$3" borderTopWidth={1} borderTopColor="$borderColor" pt="$3">
-        {/* Order discount */}
-        <XStack items="center" gap="$2">
-          <Paragraph fontSize={11} color="$color9" fontWeight="600" style={{ width: 90 }}>Order disc.</Paragraph>
-          <XStack flex={1} items="center" bg="$color3" rounded="$3" px="$2" height={32}>
-            <Paragraph color="$color8" fontSize={11} mr="$1">₹</Paragraph>
-            <Input value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" placeholder="0" flex={1} bg="transparent" borderWidth={0} fontSize={12} color="$color12" />
-          </XStack>
+      <SectionCard>
+        <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">Customer & Payment</Paragraph>
+        <XStack gap="$2" flexWrap="wrap">
+          <Input flex={1} value={customerName} onChangeText={setCustomerName} placeholder="Customer name" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} />
+          <Input flex={1} value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} keyboardType="phone-pad" />
         </XStack>
-
-        {/* Customer */}
         <XStack gap="$2">
-          <Input flex={1} value={customerName} onChangeText={setCustomerName} placeholder="Customer name" size="$2.5" bg="$color3" borderWidth={0} px="$3" />
-          <Input flex={1} value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" size="$2.5" bg="$color3" borderWidth={0} px="$3" keyboardType="phone-pad" />
-        </XStack>
-
-        {/* Payment method — toggle pills */}
-        <XStack bg="$color2" rounded="$3" p="$0.5" borderWidth={1} borderColor="$borderColor">
-          <Button flex={1} size="$2.5" bg={paymentMethod === 'cash' ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setPaymentMethod('cash')} pressStyle={{ scale: 0.97 }}>
-            <Paragraph fontSize={12} fontWeight={paymentMethod === 'cash' ? '700' : '500'} color={paymentMethod === 'cash' ? '$color12' : '$color8'}>
-              💵 Cash
-            </Paragraph>
+          <Button flex={1} bg={paymentMethod === 'cash' ? (desktop ? '$color4' : '$accentSoft') : (desktop ? '$color3' : '$bgElevated')} borderWidth={1} borderColor={paymentMethod === 'cash' ? (desktop ? '$accentBackground' : '$borderStrong') : (desktop ? '$borderColor' : '$borderSubtle')} onPress={() => setPaymentMethod('cash')}>
+            Cash
           </Button>
-          <Button flex={1} size="$2.5" bg={paymentMethod === 'upi_mock' ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setPaymentMethod('upi_mock')} pressStyle={{ scale: 0.97 }}>
-            <Paragraph fontSize={12} fontWeight={paymentMethod === 'upi_mock' ? '700' : '500'} color={paymentMethod === 'upi_mock' ? '$color12' : '$color8'}>
-              📱 UPI
-            </Paragraph>
+          <Button flex={1} bg={paymentMethod === 'upi_mock' ? (desktop ? '$color4' : '$accentSoft') : (desktop ? '$color3' : '$bgElevated')} borderWidth={1} borderColor={paymentMethod === 'upi_mock' ? (desktop ? '$accentBackground' : '$borderStrong') : (desktop ? '$borderColor' : '$borderSubtle')} onPress={() => setPaymentMethod('upi_mock')}>
+            UPI
           </Button>
         </XStack>
+        <Input value={paymentNote} onChangeText={setPaymentNote} placeholder="Payment note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} />
+        <Input value={notes} onChangeText={setNotes} placeholder="Sale note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} />
+      </SectionCard>
 
-        {/* Summary */}
-        <YStack bg="$color2" rounded="$4" p="$3" gap="$1.5" borderWidth={1} borderColor="$borderColor">
-          <XStack justify="space-between">
-            <Paragraph color="$color8" fontSize={12}>Subtotal</Paragraph>
-            <Paragraph color="$color11" fontSize={12} fontWeight="600">{formatCurrency(preview?.summary.subtotal ?? 0)}</Paragraph>
+      <SectionCard>
+        <XStack justify="space-between" items="center">
+          <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Order discount</Paragraph>
+          <XStack items="center" gap="$1" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} px="$2">
+            <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$1">₹</Paragraph>
+            <Input value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" bg="transparent" borderWidth={0} width={70} color={desktop ? '$color12' : '$textPrimary'} />
           </XStack>
-          {(preview?.summary.lineDiscountTotal ?? 0) > 0 ? (
-            <XStack justify="space-between">
-              <Paragraph color="$color8" fontSize={12}>Discounts</Paragraph>
-              <Paragraph color="$color8" fontSize={12}>-{formatCurrency((preview?.summary.lineDiscountTotal ?? 0) + (preview?.summary.orderDiscount ?? 0))}</Paragraph>
-            </XStack>
-          ) : null}
-          <XStack justify="space-between" pt="$2" mt="$1" borderTopWidth={1} borderTopColor="$borderColor">
-            <Paragraph fontWeight="800" fontSize="$4">TOTAL</Paragraph>
-            <Paragraph fontWeight="900" fontSize="$6" color="$accentBackground">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
-          </XStack>
-        </YStack>
-
+        </XStack>
+        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$textMuted'}>Subtotal</Paragraph><Paragraph color={desktop ? '$color12' : '$textPrimary'} fontWeight="700">{formatCurrency(preview?.summary.subtotal ?? 0)}</Paragraph></XStack>
+        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$textMuted'}>Discounts</Paragraph><Paragraph color={desktop ? '$color12' : '$textPrimary'} fontWeight="700">-{formatCurrency((preview?.summary.lineDiscountTotal ?? 0) + (preview?.summary.orderDiscount ?? 0))}</Paragraph></XStack>
+        <XStack justify="space-between" pt="$2" borderTopWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'}>
+          <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">Total</Paragraph>
+          <Paragraph color="$accentStrong" fontSize="$7" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
+        </XStack>
         {previewError ? (
-          <YStack bg="$red3" rounded="$3" p="$2.5">
-            <Paragraph color="$red10" fontWeight="700" fontSize={11}>{previewError}</Paragraph>
-          </YStack>
+          <Paragraph color="$danger" fontSize="$2">{previewError}</Paragraph>
         ) : null}
-
-        <Button
-          theme="accent"
-          size="$5"
-          icon={<ReceiptText size={18} />}
-          onPress={handleCheckout}
-          disabled={isSubmitting || cart.length === 0 || !!previewError}
-          opacity={isSubmitting || cart.length === 0 ? 0.4 : 1}
-          hoverStyle={{ scale: 1.02 }}
-          pressStyle={{ scale: 0.98 }}
-        >
+        <Button theme="accent" size="$5" icon={<ReceiptText size={18} />} disabled={isSubmitting || cart.length === 0 || !!previewError} onPress={handleCheckout}>
           {isSubmitting ? 'Processing…' : 'Complete Sale'}
         </Button>
-      </YStack>
+      </SectionCard>
     </YStack>
   )
 
+  const mobileFabBottom = Math.max(insets.bottom + 72, 88)
+
   return (
-    <YStack flex={1} style={{ margin: desktop ? -28 : -16, marginTop: desktop ? -20 : -16 } as any}>
-      {/* ═══ DESKTOP: Full-bleed 2-pane layout ═══ */}
-      {desktop ? (
-        <XStack flex={1} style={{ height: 'calc(100vh - 56px)' } as any}>
-          {/* ── LEFT: Scrollable product catalog ── */}
-          <YStack flex={1} style={{ overflow: 'hidden' } as any}>
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, paddingBottom: 40 } as any}>
-              {/* Search */}
-              <XStack items="center" gap="$2" bg="$color2" borderWidth={1} borderColor="$borderColor" rounded="$4" px="$3" mb="$3">
-                <Search size={16} color="$color8" />
-                <Input
-                  value={search}
-                  onChangeText={setSearch}
-                  placeholder="Search products, codes, scan barcode…"
-                  flex={1}
-                  bg="transparent"
-                  borderWidth={0}
-                  py="$2.5"
-                  fontSize="$3"
-                  placeholderTextColor="$color7"
-                  color="$color12"
-                />
-                {search ? (
-                  <Button size="$2" bg="transparent" borderWidth={0} onPress={() => setSearch('')} p="$1" hoverStyle={{ bg: '$color3' }}><X size={14} color="$color8" /></Button>
-                ) : null}
-              </XStack>
+    <YStack flex={1}>
+      <ScreenScaffold>
+      {!mobile ? (
+        <ScreenHeader
+          eyebrow="Checkout"
+          title="Point of Sale"
+          subtitle="Fast product search and a cleaner one-handed checkout flow."
+          actions={
+            <HeaderAction bg={desktop ? '$color3' : '$bgElevated'} borderColor={desktop ? '$borderColor' : '$borderSubtle'} borderWidth={1} icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)}>
+              Scan
+            </HeaderAction>
+          }
+        />
+      ) : null}
 
-              {/* Category filters */}
-              <XStack gap="$2" mb="$4">
-                <YStack flex={1}>
-                  <SelectionField label="Category" value={categoryId} placeholder="All" options={[{ label: 'All categories', value: null }, ...(categories ?? []).map((c) => ({ label: c.name, value: c._id }))]} onChange={setCategoryId} />
-                </YStack>
-                <YStack flex={1}>
-                  <SelectionField label="Subcategory" value={subcategoryId} placeholder="All" options={[{ label: 'All', value: null }, ...getSubcategoryOptions(categories, categoryId)]} onChange={setSubcategoryId} />
-                </YStack>
-              </XStack>
-
-              {/* Product grid */}
-              {status === 'LoadingFirstPage' ? (
-                <XStack items="center" gap="$2" py="$8" justify="center">
-                  <Spinner size="small" />
-                  <Paragraph color="$color8" fontSize="$2">Loading catalog…</Paragraph>
-                </XStack>
-              ) : productGroups.length === 0 ? (
-                <YStack items="center" py="$8" gap="$2">
-                  <Paragraph color="$color8" fontSize="$3">No products match your search.</Paragraph>
-                </YStack>
-              ) : (
-                <XStack gap="$3" flexWrap="wrap">
-                  {productGroups.map((g) => {
-                    const isOOS = g.stockState === 'out_of_stock'
-                    return (
-                      <YStack
-                        key={g.productId}
-                        bg={isOOS ? '$color1' : '$color2'}
-                        borderWidth={1}
-                        borderColor={isOOS ? '$borderColor' : '$borderColor'}
-                        rounded="$5"
-                        p="$3"
-                        gap="$2.5"
-                        opacity={isOOS ? 0.5 : 1}
-                        style={{ width: 240 }}
-                        hoverStyle={isOOS ? {} : { borderColor: '$color6', bg: '$color3', scale: 1.02 }}
-                        pressStyle={isOOS ? {} : { scale: 0.98 }}
-                        onPress={() => setDetailsProductId(g.productId)}
-                        cursor="pointer"
-                      >
-                        <XStack gap="$2.5" items="center">
-                          <ProductImage uri={g.mediaUrl} size={48} label={g.productCode} />
-                          <YStack flex={1} gap="$0.5">
-                            <Paragraph fontSize="$3" fontWeight="700" numberOfLines={1}>{g.productName}</Paragraph>
-                            <Paragraph color="$color8" fontSize={10} numberOfLines={1}>{g.productCode} · {g.variants.length} variant{g.variants.length > 1 ? 's' : ''}</Paragraph>
-                          </YStack>
-                        </XStack>
-
-                        <XStack justify="space-between" items="center">
-                          <Paragraph fontSize="$4" fontWeight="800">
-                            {g.minPrice === g.maxPrice ? formatCurrency(g.minPrice) : `${formatCurrency(g.minPrice)}+`}
-                          </Paragraph>
-                          <StatusBadge status={g.stockState} />
-                        </XStack>
-
-                        <Button
-                          theme={isOOS ? undefined : 'accent'}
-                          bg={isOOS ? '$color3' : undefined}
-                          size="$3"
-                          disabled={isOOS}
-                          onPress={(e) => {
-                            e.stopPropagation()
-                            if (isOOS) return
-                            if (g.variants.length === 1) { addVariantToCart(g.variants[0]); return }
-                            setVariantPickerItems(g.variants)
-                            setVariantPickerOpen(true)
-                          }}
-                          pressStyle={isOOS ? {} : { scale: 0.95 }}
-                        >
-                          {isOOS ? 'Out of Stock' : g.variants.length === 1 ? 'Add to Cart' : `Choose (${g.variants.length})`}
-                        </Button>
-                      </YStack>
-                    )
-                  })}
-                </XStack>
-              )}
-
-              {status === 'CanLoadMore' ? (
-                <XStack justify="center" py="$4" mt="$2">
-                  <Button bg="$color3" borderColor="$borderColor" borderWidth={1} size="$3" onPress={() => loadMore(24)}>Load more</Button>
-                </XStack>
-              ) : null}
-            </ScrollView>
-          </YStack>
-
-          {/* ── RIGHT: Fixed checkout terminal ── */}
-          <YStack
-            style={{ width: 400, borderLeftWidth: 1, borderLeftColor: 'var(--borderColor)' } as any}
-            bg="$color1"
-            p="$4"
-          >
-            {checkoutTerminal}
-          </YStack>
-        </XStack>
-      ) : (
-        /* ═══ MOBILE: Single column ═══ */
-        <YStack flex={1} p="$4" gap="$3">
-          {/* Search */}
-          <XStack items="center" gap="$2" bg="$color2" borderWidth={1} borderColor="$borderColor" rounded="$4" px="$3">
-            <Search size={16} color="$color8" />
-            <Input value={search} onChangeText={setSearch} placeholder="Search…" flex={1} bg="transparent" borderWidth={0} py="$2" fontSize="$3" color="$color12" />
+      {mobile ? (
+        <YStack gap="$3">
+          <XStack items="center" gap="$2" bg="$bgSurface" borderWidth={1} borderColor="$borderSubtle" rounded="$6" px="$3">
+            <Search size={16} color="$textMuted" />
+            <Input value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$textPrimary" />
+            {Platform.OS !== 'web' ? (
+              <Button size="$2.5" theme="accent" icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)} />
+            ) : null}
           </XStack>
 
-          {/* Filters */}
-          <XStack gap="$2">
-            <YStack flex={1}>
-              <SelectionField label="Category" value={categoryId} placeholder="All" options={[{ label: 'All', value: null }, ...(categories ?? []).map((c) => ({ label: c.name, value: c._id }))]} onChange={setCategoryId} />
-            </YStack>
-            <YStack flex={1}>
-              <SelectionField label="Sub" value={subcategoryId} placeholder="All" options={[{ label: 'All', value: null }, ...getSubcategoryOptions(categories, categoryId)]} onChange={setSubcategoryId} />
-            </YStack>
-          </XStack>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 } as any}>
+            <XStack gap="$2">
+              <Button size="$3" bg={categoryId === null ? '$accentSoft' : '$bgSurface'} borderWidth={1} borderColor={categoryId === null ? '$borderStrong' : '$borderSubtle'} onPress={() => setCategoryId(null)}>
+                All
+              </Button>
+              {(categories ?? []).map((category) => (
+                <Button
+                  key={category._id}
+                  size="$3"
+                  bg={categoryId === category._id ? '$accentSoft' : '$bgSurface'}
+                  borderWidth={1}
+                  borderColor={categoryId === category._id ? '$borderStrong' : '$borderSubtle'}
+                  onPress={() => setCategoryId(category._id)}
+                >
+                  {category.name}
+                </Button>
+              ))}
+            </XStack>
+          </ScrollView>
 
-          {/* Grid */}
           {status === 'LoadingFirstPage' ? (
-            <XStack items="center" gap="$2" py="$6" justify="center"><Spinner size="small" /></XStack>
+            <XStack items="center" gap="$2" py="$6" justify="center"><Spinner size="small" /><Paragraph color="$textMuted">Loading catalog…</Paragraph></XStack>
           ) : (
-            <XStack gap="$2.5" flexWrap="wrap">
-              {productGroups.map((g) => {
-                const isOOS = g.stockState === 'out_of_stock'
+            <YStack gap="$2.5">
+              {productGroups.map((group) => {
+                const isOos = group.stockState === 'out_of_stock'
                 return (
-                  <YStack key={g.productId} bg="$color2" borderWidth={1} borderColor="$borderColor" rounded="$4" p="$2.5" gap="$2" opacity={isOOS ? 0.5 : 1} style={{ width: '48%' }} onPress={() => setDetailsProductId(g.productId)} cursor="pointer">
-                    <XStack gap="$2" items="center">
-                      <ProductImage uri={g.mediaUrl} size={36} label={g.productCode} />
-                      <YStack flex={1}>
-                        <Paragraph fontSize="$2" fontWeight="700" numberOfLines={1}>{g.productName}</Paragraph>
-                        <Paragraph color="$color8" fontSize={9}>{g.variants.length}v · {formatNumber(g.totalOnHand)}</Paragraph>
+                  <ListRow
+                    key={group.productId}
+                    onPress={() => setDetailsProductId(group.productId)}
+                    leading={<ProductImage uri={group.mediaUrl} size={56} label={group.productCode} />}
+                    title={group.productName}
+                    meta={<Paragraph color="$textPrimary" fontSize="$4" fontWeight="800">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>}
+                    subtitle={
+                      <YStack gap="$1">
+                        <Paragraph color="$textMuted" fontSize="$2">{group.productCode} · {group.variants.length} variant{group.variants.length > 1 ? 's' : ''}</Paragraph>
+                        <XStack justify="space-between" items="center">
+                          <Paragraph color="$textFaint" fontSize="$1">{formatNumber(group.totalOnHand)} available</Paragraph>
+                          <StatusBadge status={group.stockState} />
+                        </XStack>
                       </YStack>
-                    </XStack>
-                    <XStack justify="space-between" items="center">
-                      <Paragraph fontSize="$3" fontWeight="700">{formatCurrency(g.minPrice)}</Paragraph>
-                      <StatusBadge status={g.stockState} />
-                    </XStack>
-                    <Button theme={isOOS ? undefined : 'accent'} bg={isOOS ? '$color3' : undefined} size="$2.5" disabled={isOOS} onPress={(e) => { e.stopPropagation(); if (!isOOS) { if (g.variants.length === 1) addVariantToCart(g.variants[0]); else { setVariantPickerItems(g.variants); setVariantPickerOpen(true) } } }}>
-                      {isOOS ? 'OOS' : g.variants.length === 1 ? 'Add' : 'Choose'}
-                    </Button>
-                  </YStack>
+                    }
+                    trailing={
+                      <Button
+                        theme={isOos ? undefined : 'accent'}
+                        bg={isOos ? '$bgElevated' : undefined}
+                        borderWidth={isOos ? 1 : 0}
+                        borderColor="$borderSubtle"
+                        disabled={isOos}
+                        onPress={() => {
+                          if (isOos) return
+                          if (group.variants.length === 1) {
+                            addVariantToCart(group.variants[0])
+                            return
+                          }
+                          setVariantPickerItems(group.variants)
+                          setVariantPickerOpen(true)
+                        }}
+                      >
+                        {isOos ? 'OOS' : group.variants.length === 1 ? 'Add' : 'Choose'}
+                      </Button>
+                    }
+                  />
                 )
               })}
-            </XStack>
+            </YStack>
           )}
 
           {status === 'CanLoadMore' ? (
-            <XStack justify="center" py="$2">
-              <Button bg="$color3" borderColor="$borderColor" borderWidth={1} size="$3" onPress={() => loadMore(24)}>More</Button>
-            </XStack>
+            <XStack justify="center"><Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" onPress={() => loadMore(24)}>Load more</Button></XStack>
           ) : null}
         </YStack>
+      ) : (
+        <XStack gap="$4" items="flex-start">
+          <YStack flex={1} gap="$3">
+            <XStack items="center" gap="$2" bg="$color3" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">
+              <Search size={16} color="$color8" />
+              <Input value={search} onChangeText={setSearch} placeholder="Search products, codes, or barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
+            </XStack>
+            <XStack gap="$2" flexWrap="wrap">
+              <SectionCard flex={1} p="$3">
+                <Paragraph color="$color8" fontSize="$1" textTransform="uppercase" letterSpacing={1.1}>Category</Paragraph>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <XStack gap="$2" pt="$2">
+                    <Button size="$2.5" bg={categoryId === null ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === null ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(null)}>All</Button>
+                    {(categories ?? []).map((category) => (
+                      <Button key={category._id} size="$2.5" bg={categoryId === category._id ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === category._id ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(category._id)}>
+                        {category.name}
+                      </Button>
+                    ))}
+                  </XStack>
+                </ScrollView>
+              </SectionCard>
+            </XStack>
+            <XStack gap="$3" flexWrap="wrap">
+              {productGroups.map((group) => {
+                const isOos = group.stockState === 'out_of_stock'
+                return (
+                  <SectionCard key={group.productId} style={{ width: 290 }}>
+                    <XStack gap="$3" items="center">
+                      <ProductImage uri={group.mediaUrl} size={58} label={group.productCode} />
+                      <YStack flex={1} gap="$1">
+                        <Paragraph color="$color12" fontSize="$4" fontWeight="800" numberOfLines={1}>{group.productName}</Paragraph>
+                        <Paragraph color="$color10" fontSize="$2">{group.productCode} · {group.variants.length} variants</Paragraph>
+                      </YStack>
+                    </XStack>
+                    <XStack justify="space-between" items="center">
+                      <Paragraph color="$color12" fontSize="$6" fontWeight="900">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>
+                      <StatusBadge status={group.stockState} />
+                    </XStack>
+                    <Button
+                      theme={isOos ? undefined : 'accent'}
+                      bg={isOos ? '$color3' : undefined}
+                      borderWidth={isOos ? 1 : 0}
+                      borderColor="$borderColor"
+                      disabled={isOos}
+                      onPress={() => {
+                        if (isOos) return
+                        if (group.variants.length === 1) {
+                          addVariantToCart(group.variants[0])
+                          return
+                        }
+                        setVariantPickerItems(group.variants)
+                        setVariantPickerOpen(true)
+                      }}
+                    >
+                      {isOos ? 'Out of stock' : group.variants.length === 1 ? 'Add to cart' : 'Choose variant'}
+                    </Button>
+                  </SectionCard>
+                )
+              })}
+            </XStack>
+          </YStack>
+          <YStack width={430} position="sticky" style={{ top: 92 } as any}>
+            {checkoutTerminal}
+          </YStack>
+        </XStack>
       )}
 
-      {/* Mobile: floating cart badge */}
-      {!desktop && cart.length > 0 ? (
-        <Button theme="accent" size="$4" onPress={() => setCartOpen(true)} icon={ShoppingCart} style={{ borderRadius: 999, zIndex: 50, position: 'fixed' as any, bottom: 80, right: 16 } as any}>
-          {cart.length} · {formatCurrency(preview?.summary.total ?? 0)}
+      </ScreenScaffold>
+
+      {mobile && cart.length > 0 ? (
+        <Button
+          theme="accent"
+          size="$4"
+          icon={<ShoppingCart size={18} />}
+          onPress={() => setCartOpen(true)}
+          style={{
+            position: Platform.OS === 'web' ? 'fixed' as any : 'absolute',
+            right: 16,
+            bottom: Platform.OS === 'web' ? 92 : mobileFabBottom,
+            zIndex: 40,
+            borderRadius: 999,
+            minWidth: 0,
+          }}
+        >
+          {`${cart.length} · ${formatCurrency(preview?.summary.total ?? 0)}`}
         </Button>
       ) : null}
 
-      {/* Mobile cart sheet */}
-      {!desktop ? (
+      {mobile ? (
         <ResponsiveDialog open={cartOpen} onOpenChange={setCartOpen} title="Checkout">
           {checkoutTerminal}
         </ResponsiveDialog>
       ) : null}
 
-      {/* Variant picker */}
-      <ResponsiveDialog open={variantPickerOpen} onOpenChange={setVariantPickerOpen} title="Choose variant" description="Select a variant to add.">
+      <ResponsiveDialog open={variantPickerOpen} onOpenChange={setVariantPickerOpen} title="Choose variant" description="Select a variant to add to the current sale.">
         <YStack gap="$2" py="$1">
           {variantPickerItems.map((item) => (
-            <XStack key={item._id} bg="$color3" rounded="$4" p="$3" justify="space-between" items="center" gap="$3" hoverStyle={{ bg: '$color4' }}>
-              <YStack flex={1} gap="$0.5">
-                <Paragraph fontWeight="700" fontSize="$3">{item.optionSummary || item.label}</Paragraph>
-                <Paragraph color="$color8" fontSize="$2">{item.displayCode} · {formatCurrency(item.salePrice)} · {formatNumber(item.onHand)} avail</Paragraph>
-              </YStack>
-              <Button theme={item.stockState === 'out_of_stock' ? undefined : 'accent'} disabled={item.stockState === 'out_of_stock'} size="$3" onPress={() => { addVariantToCart(item); setVariantPickerOpen(false) }}>
-                {item.stockState === 'out_of_stock' ? 'OOS' : 'Add'}
-              </Button>
-            </XStack>
+            <SectionCard key={item._id} p="$3">
+              <XStack justify="space-between" items="center" gap="$3">
+                <YStack flex={1} gap="$0.5">
+                  <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$3" fontWeight="800">{item.optionSummary || item.label}</Paragraph>
+                  <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">{item.displayCode} · {formatCurrency(item.salePrice)} · {formatNumber(item.onHand)} avail</Paragraph>
+                </YStack>
+                <Button theme={item.stockState === 'out_of_stock' ? undefined : 'accent'} disabled={item.stockState === 'out_of_stock'} onPress={() => { addVariantToCart(item); setVariantPickerOpen(false) }}>
+                  {item.stockState === 'out_of_stock' ? 'OOS' : 'Add'}
+                </Button>
+              </XStack>
+            </SectionCard>
           ))}
         </YStack>
       </ResponsiveDialog>
 
-      {/* UPI Dialog */}
-      <ResponsiveDialog open={showUpiDialog} onOpenChange={(o) => { setShowUpiDialog(o); if (!o) setIsSubmitting(false) }} title="UPI Payment">
+      <ResponsiveDialog open={showUpiDialog} onOpenChange={(open) => { setShowUpiDialog(open); if (!open) setIsSubmitting(false) }} title="UPI Payment" description="Confirm payment before completing the sale.">
         <YStack gap="$4" py="$2">
           <XStack justify="space-between" items="center" flexWrap="wrap" gap="$4">
-            <YStack flex={1} gap="$3" style={{ minWidth: 200 }}>
-              <YStack bg="$color3" rounded="$4" p="$3" gap="$1.5">
-                <Paragraph color="$color10" fontSize="$2" fontWeight="600">Scan to Pay</Paragraph>
-                <Paragraph color="$color12" fontSize="$5" fontWeight="800">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
-                {customerName ? <Paragraph color="$color8" fontSize="$2">Customer: {customerName}</Paragraph> : null}
-              </YStack>
-              <YStack gap="$1" items="center">
-                <Paragraph color={upiTimer <= 60 ? '$red10' : '$color11'} fontSize="$4" fontWeight="700">{Math.floor(upiTimer / 60)}:{(upiTimer % 60).toString().padStart(2, '0')}</Paragraph>
-                <Paragraph color="$color8" fontSize="$2">Expires in</Paragraph>
-              </YStack>
+            <YStack flex={1} gap="$3" style={{ minWidth: 220 }}>
+              <SectionCard bg="$bgElevated">
+                <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Amount payable</Paragraph>
+                <Paragraph color="$accentStrong" fontSize="$8" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
+                {customerName ? <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Customer: {customerName}</Paragraph> : null}
+              </SectionCard>
+              <SectionCard bg="$bgElevated">
+                <Paragraph color={upiTimer <= 60 ? '$danger' : desktop ? '$color12' : '$textPrimary'} fontSize="$6" fontWeight="900">
+                  {Math.floor(upiTimer / 60)}:{(upiTimer % 60).toString().padStart(2, '0')}
+                </Paragraph>
+                <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Expires in</Paragraph>
+              </SectionCard>
             </YStack>
-            <YStack items="center" justify="center" p="$2" bg="#FFFFFF" rounded="$4" mx="auto">
+            <YStack items="center" justify="center" p="$3" bg="#fff" rounded="$6">
               <QRCode value={`upi://pay?pa=yourmerchant@ybl&pn=Hari%20Charnamm&am=${(preview?.summary.total ?? 0).toFixed(2)}&tr=POS-WEB&cu=INR`} size={180} color="#000000" backgroundColor="#FFFFFF" />
             </YStack>
           </XStack>
-          <Button theme="accent" size="$4" disabled={upiTimer <= 0 || isSubmitting} onPress={executeCheckout} mt="$2">
+          <Button theme="accent" size="$5" disabled={upiTimer <= 0 || isSubmitting} onPress={executeCheckout}>
             {isSubmitting ? 'Processing…' : 'Confirm Payment Received'}
           </Button>
         </YStack>
       </ResponsiveDialog>
 
-      <ProductShowcaseDialog productId={detailsProductId} open={detailsProductId !== null} onOpenChange={(o) => !o && setDetailsProductId(null)} />
+      <ProductShowcaseDialog productId={detailsProductId} open={detailsProductId !== null} onOpenChange={(open) => !open && setDetailsProductId(null)} />
+      <BarcodeScannerDialog open={scannerOpen} onOpenChange={setScannerOpen} onScanned={handleBarcodeScanned} />
     </YStack>
   )
 }

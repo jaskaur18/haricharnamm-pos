@@ -1,49 +1,78 @@
 import { defaultConfig } from '@tamagui/config/v5'
+import { createAnimations } from '@tamagui/animations-css'
 import { createTamagui } from 'tamagui'
 
-// ── Saffron & Night — HARI CHARNAMM dark-only palette ──
+const animations = createAnimations({
+  fast: 'ease-in 150ms',
+  medium: 'ease-in 300ms',
+  slow: 'ease-in 450ms',
+  bouncy: 'ease-in 200ms',
+  lazy: 'ease-in 600ms',
+  quick: 'ease-in 100ms',
+  tooltip: 'ease-in 150ms',
+})
+
 const darkTheme = {
   ...defaultConfig.themes.dark,
 
-  // Surface hierarchy (OLED-first)
-  background: '#000000',     // Pitch Black — page bg
-  backgroundHover: '#111113',
-  backgroundPress: '#1A1A1E',
-  backgroundFocus: '#111113',
-  backgroundStrong: '#000000',
+  background: '#111111',
+  backgroundHover: '#181614',
+  backgroundPress: '#201d19',
+  backgroundFocus: '#181614',
+  backgroundStrong: '#0d0b09',
   backgroundTransparent: 'rgba(0,0,0,0)',
 
-  // Stepped surface tokens
-  color1: '#000000',   // absolute page background
-  color2: 'rgba(25, 25, 28, 0.65)',   // glass card surface
-  color3: 'rgba(38, 38, 43, 0.75)',   // input / hover surface
-  color4: 'rgba(232, 162, 48, 0.12)', // subtle gold overlay for active items
-  color5: 'rgba(255, 255, 255, 0.08)',// faint glass borders
-
-  // Text hierarchy
-  color6: '#52525B',   // disabled
-  color7: '#8B8B93',   // placeholder / subtle text
+  color1: '#0f0d0b',
+  color2: '#141416',
+  color3: '#202127',
+  color4: 'rgba(232, 162, 48, 0.14)',
+  color5: 'rgba(255, 255, 255, 0.08)',
+  color6: '#5b5d66',
+  color7: '#a7a8b0',
   color: '#FFFFFF',
-  color8: '#FFAF20',   // ★ vibrant glowing gold
-  color9: '#E29712',   // saffron pressed
-  color10: '#A1A1AA',  // secondary text
-  color11: '#E4E4E7',  // body text (brighter)
-  color12: '#FFFFFF',  // headings / emphasis
+  color8: '#f3b54a',
+  color9: '#e09a26',
+  color10: '#b6b7c0',
+  color11: '#e7e8ef',
+  color12: '#ffffff',
 
-  // Borders (Faint Glass)
-  borderColor: 'rgba(255, 255, 255, 0.06)',
-  borderColorHover: 'rgba(255, 255, 255, 0.12)',
-  borderColorFocus: '#FFAF20',
-  borderColorPress: '#FFAF20',
+  borderColor: 'rgba(255, 255, 255, 0.08)',
+  borderColorHover: 'rgba(255, 255, 255, 0.14)',
+  borderColorFocus: '#f3b54a',
+  borderColorPress: '#f3b54a',
+  shadowColor: 'rgba(0,0,0,0.7)',
+  shadowColorHover: 'rgba(0,0,0,0.85)',
+  placeholderColor: '#8f9098',
 
-  // Misc
-  shadowColor: 'rgba(0,0,0,0.8)',
-  shadowColorHover: 'rgba(0,0,0,0.9)',
-  placeholderColor: '#8B8B93',
+  bgApp: '#0f0d0b',
+  bgSurface: '#141416',
+  bgElevated: '#202127',
+  bgMuted: '#2a2b31',
+  bgSoft: 'rgba(243, 181, 74, 0.12)',
+  bgCardHover: '#25262d',
+  textPrimary: '#ffffff',
+  textSecondary: '#ececf2',
+  textMuted: '#c6c7cf',
+  textFaint: '#9799a3',
+  accent: '#f3b54a',
+  accentStrong: '#ffcd73',
+  accentSoft: 'rgba(243, 181, 74, 0.18)',
+  success: '#61d694',
+  successSoft: 'rgba(97, 214, 148, 0.14)',
+  warning: '#f3d46d',
+  warningSoft: 'rgba(243, 212, 109, 0.14)',
+  danger: '#ef8c82',
+  dangerSoft: 'rgba(239, 140, 130, 0.14)',
+  info: '#7ab7ff',
+  infoSoft: 'rgba(122, 183, 255, 0.14)',
+  borderSubtle: 'rgba(255, 241, 220, 0.08)',
+  borderStrong: 'rgba(255, 241, 220, 0.16)',
+  focus: '#f3b54a',
 }
 
 export const config = createTamagui({
   ...defaultConfig,
+  animations,
   media: {
     ...defaultConfig.media,
     maxXs: { maxWidth: 520 },
@@ -59,27 +88,27 @@ export const config = createTamagui({
     light: darkTheme,
     dark_accent: {
       ...darkTheme,
-      background: '#E8A230', // color8 (saffron/gold)
-      backgroundHover: '#D4922A', // color9
-      backgroundPress: '#B47B23',
+      background: '#f3b54a',
+      backgroundHover: '#e4a63a',
+      backgroundPress: '#cd8d25',
       color: '#000000', // darkest text
       colorHover: '#000000',
       colorPress: '#000000',
-      borderColor: '#FFAF20',
-      borderColorHover: '#D4922A',
-      borderColorPress: '#B47B23',
+      borderColor: '#f3b54a',
+      borderColorHover: '#e4a63a',
+      borderColorPress: '#cd8d25',
     },
     light_accent: {
       ...darkTheme,
-      background: '#E8A230', // color8 (saffron/gold)
-      backgroundHover: '#D4922A', // color9
-      backgroundPress: '#B47B23',
+      background: '#f3b54a',
+      backgroundHover: '#e4a63a',
+      backgroundPress: '#cd8d25',
       color: '#000000', // darkest text
       colorHover: '#000000',
       colorPress: '#000000',
-      borderColor: '#FFAF20',
-      borderColorHover: '#D4922A',
-      borderColorPress: '#B47B23',
+      borderColor: '#f3b54a',
+      borderColorHover: '#e4a63a',
+      borderColorPress: '#cd8d25',
     },
   },
 })

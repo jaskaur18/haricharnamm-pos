@@ -28,7 +28,38 @@ type ReportFilters = {
   variantId: Id<"productVariants"> | null;
   paymentMethod: "all" | "cash" | "upi_mock";
   returnStatus: "all" | "completed";
+  datePreset?: DatePreset;
+  compareMode?: boolean;
+  stockState?: StockFilter;
+  movementBucket?: MovementBucket;
+  salesStatus?: SalesStatusFilter;
+  groupBy?: GroupBy;
+  sortBy?: string | null;
 };
+
+type DatePreset =
+  | "today"
+  | "yesterday"
+  | "last_7_days"
+  | "last_30_days"
+  | "this_month"
+  | "previous_month"
+  | "this_quarter"
+  | "custom";
+type StockFilter = "all" | "in_stock" | "low_stock" | "out_of_stock";
+type MovementBucket =
+  | "all"
+  | "top_sellers"
+  | "slow_movers"
+  | "dead_stock"
+  | "high_returns"
+  | "discount_heavy";
+type SalesStatusFilter =
+  | "all"
+  | "completed"
+  | "returned_partial"
+  | "returned_full";
+type GroupBy = "day" | "week" | "category" | "payment" | "product";
 
 const reportFilterArgs = {
   fromDate: nullableStringValidator,
@@ -43,13 +74,167 @@ const reportFilterArgs = {
     v.literal("upi_mock"),
   ),
   returnStatus: v.union(v.literal("all"), v.literal("completed")),
+  datePreset: v.optional(
+    v.union(
+      v.literal("today"),
+      v.literal("yesterday"),
+      v.literal("last_7_days"),
+      v.literal("last_30_days"),
+      v.literal("this_month"),
+      v.literal("previous_month"),
+      v.literal("this_quarter"),
+      v.literal("custom"),
+    ),
+  ),
+  compareMode: v.optional(v.boolean()),
+  stockState: v.optional(
+    v.union(
+      v.literal("all"),
+      v.literal("in_stock"),
+      v.literal("low_stock"),
+      v.literal("out_of_stock"),
+    ),
+  ),
+  movementBucket: v.optional(
+    v.union(
+      v.literal("all"),
+      v.literal("top_sellers"),
+      v.literal("slow_movers"),
+      v.literal("dead_stock"),
+      v.literal("high_returns"),
+      v.literal("discount_heavy"),
+    ),
+  ),
+  salesStatus: v.optional(
+    v.union(
+      v.literal("all"),
+      v.literal("completed"),
+      v.literal("returned_partial"),
+      v.literal("returned_full"),
+    ),
+  ),
+  groupBy: v.optional(
+    v.union(
+      v.literal("day"),
+      v.literal("week"),
+      v.literal("category"),
+      v.literal("payment"),
+      v.literal("product"),
+    ),
+  ),
+  sortBy: v.optional(v.union(v.string(), v.null())),
 };
 
-function withDateBounds(filters: ReportFilters) {
+function dateKeyFromDate(date: Date) {
+  return makeBusinessDate(date.getTime());
+}
+
+function resolveDatePresetRange(preset?: DatePreset) {
+  if (!preset || preset === "custom") return null;
+  const now = new Date();
+  const today = dateKeyFromDate(now);
+  if (preset === "today") {
+    return { fromDate: today, toDate: today };
+  }
+  if (preset === "yesterday") {
+    const value = new Date(now);
+    value.setDate(value.getDate() - 1);
+    const key = dateKeyFromDate(value);
+    return { fromDate: key, toDate: key };
+  }
+  if (preset === "last_7_days") {
+    const value = new Date(now);
+    value.setDate(value.getDate() - 6);
+    return { fromDate: dateKeyFromDate(value), toDate: today };
+  }
+  if (preset === "last_30_days") {
+    const value = new Date(now);
+    value.setDate(value.getDate() - 29);
+    return { fromDate: dateKeyFromDate(value), toDate: today };
+  }
+  if (preset === "this_month") {
+    const value = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { fromDate: dateKeyFromDate(value), toDate: today };
+  }
+  if (preset === "previous_month") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { fromDate: dateKeyFromDate(start), toDate: dateKeyFromDate(end) };
+  }
+  const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+  const quarterStart = new Date(now.getFullYear(), quarterStartMonth, 1);
+  return { fromDate: dateKeyFromDate(quarterStart), toDate: today };
+}
+
+function resolveReportFilters(filters: ReportFilters) {
+  const presetRange =
+    (!filters.fromDate || !filters.toDate) && filters.datePreset
+      ? resolveDatePresetRange(filters.datePreset)
+      : null;
   return {
-    fromDate: filters.fromDate ?? "0000-01-01",
-    toDate: filters.toDate ?? "9999-12-31",
+    ...filters,
+    fromDate: filters.fromDate ?? presetRange?.fromDate ?? null,
+    toDate: filters.toDate ?? presetRange?.toDate ?? null,
+    compareMode: filters.compareMode ?? false,
+    stockState: filters.stockState ?? "all",
+    movementBucket: filters.movementBucket ?? "all",
+    salesStatus: filters.salesStatus ?? "all",
+    groupBy: filters.groupBy ?? "day",
+    sortBy: filters.sortBy ?? null,
   };
+}
+
+function withDateBounds(filters: ReportFilters) {
+  const resolved = resolveReportFilters(filters);
+  return {
+    fromDate: resolved.fromDate ?? "0000-01-01",
+    toDate: resolved.toDate ?? "9999-12-31",
+  };
+}
+
+function parseDateKey(date: string) {
+  return new Date(`${date}T00:00:00`);
+}
+
+function previousPeriodFor(filters: ReportFilters): ReportFilters {
+  const resolved = resolveReportFilters(filters);
+  if (!resolved.fromDate || !resolved.toDate) {
+    return { ...resolved, compareMode: false };
+  }
+  const from = parseDateKey(resolved.fromDate);
+  const to = parseDateKey(resolved.toDate);
+  const spanDays = Math.max(
+    1,
+    Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1,
+  );
+  const previousTo = new Date(from);
+  previousTo.setDate(previousTo.getDate() - 1);
+  const previousFrom = new Date(previousTo);
+  previousFrom.setDate(previousFrom.getDate() - (spanDays - 1));
+  return {
+    ...resolved,
+    fromDate: dateKeyFromDate(previousFrom),
+    toDate: dateKeyFromDate(previousTo),
+    compareMode: false,
+  };
+}
+
+function numericDelta(current: number, previous: number) {
+  const delta = normalizeMoney(current - previous);
+  return {
+    value: delta,
+    pct: previous !== 0 ? normalizeMoney((delta / previous) * 100) : current !== 0 ? 100 : 0,
+  };
+}
+
+function summaryWithComparison<T extends Record<string, number>>(
+  current: T,
+  previous: T,
+) {
+  const delta = Object.fromEntries(
+    Object.keys(current).map((key) => [key, numericDelta(current[key], previous[key] ?? 0)]),
+  );
+  return { current, previous, delta };
 }
 
 async function queryRowsByDate<T extends TableNames>(
@@ -217,17 +402,21 @@ async function queryRowsByDate<T extends TableNames>(
 }
 
 function filterSaleItems(rows: Doc<"saleItems">[], filters: ReportFilters) {
+  const resolved = resolveReportFilters(filters);
   return rows.filter((row) => {
-    if (filters.categoryId && row.categoryId !== filters.categoryId) return false;
-    if (filters.subcategoryId && row.subcategoryId !== filters.subcategoryId) {
+    if (resolved.categoryId && row.categoryId !== resolved.categoryId) return false;
+    if (resolved.subcategoryId && row.subcategoryId !== resolved.subcategoryId) {
       return false;
     }
-    if (filters.productId && row.productId !== filters.productId) return false;
-    if (filters.variantId && row.variantId !== filters.variantId) return false;
+    if (resolved.productId && row.productId !== resolved.productId) return false;
+    if (resolved.variantId && row.variantId !== resolved.variantId) return false;
     if (
-      filters.paymentMethod !== "all" &&
-      row.paymentMethod !== filters.paymentMethod
+      resolved.paymentMethod !== "all" &&
+      row.paymentMethod !== resolved.paymentMethod
     ) {
+      return false;
+    }
+    if (resolved.salesStatus !== "all" && row.saleStatus !== resolved.salesStatus) {
       return false;
     }
     return true;
@@ -235,13 +424,14 @@ function filterSaleItems(rows: Doc<"saleItems">[], filters: ReportFilters) {
 }
 
 function filterReturnItems(rows: Doc<"returnItems">[], filters: ReportFilters) {
+  const resolved = resolveReportFilters(filters);
   return rows.filter((row) => {
-    if (filters.categoryId && row.categoryId !== filters.categoryId) return false;
-    if (filters.subcategoryId && row.subcategoryId !== filters.subcategoryId) {
+    if (resolved.categoryId && row.categoryId !== resolved.categoryId) return false;
+    if (resolved.subcategoryId && row.subcategoryId !== resolved.subcategoryId) {
       return false;
     }
-    if (filters.productId && row.productId !== filters.productId) return false;
-    if (filters.variantId && row.variantId !== filters.variantId) return false;
+    if (resolved.productId && row.productId !== resolved.productId) return false;
+    if (resolved.variantId && row.variantId !== resolved.variantId) return false;
     return true;
   });
 }
@@ -316,6 +506,53 @@ async function loadVariantDailyRows(
     mode,
     filters,
   )) as Doc<"variantDailySales">[];
+}
+
+async function loadSales(
+  ctx: ReaderCtx,
+  filters: ReportFilters,
+) {
+  const resolved = resolveReportFilters(filters);
+  const { fromDate, toDate } = withDateBounds(resolved);
+
+  let rows: Doc<"sales">[] = [];
+  const paymentMethod = resolved.paymentMethod;
+  const salesStatus = resolved.salesStatus;
+  if (paymentMethod !== "all") {
+    rows = await ctx.db
+      .query("sales")
+      .withIndex("by_paymentMethod_and_businessDate", (q) =>
+        q.eq("paymentMethod", paymentMethod).gte("businessDate", fromDate).lte("businessDate", toDate),
+      )
+      .take(1200);
+  } else if (salesStatus !== "all") {
+    rows = await ctx.db
+      .query("sales")
+      .withIndex("by_status_and_businessDate", (q) =>
+        q.eq("status", salesStatus).gte("businessDate", fromDate).lte("businessDate", toDate),
+      )
+      .take(1200);
+  } else {
+    rows = await ctx.db
+      .query("sales")
+      .withIndex("by_businessDate", (q) =>
+        q.gte("businessDate", fromDate).lte("businessDate", toDate),
+      )
+      .take(1200);
+  }
+
+  if (
+    !resolved.categoryId &&
+    !resolved.subcategoryId &&
+    !resolved.productId &&
+    !resolved.variantId
+  ) {
+    return rows;
+  }
+
+  const saleItems = await loadSaleItems(ctx, resolved);
+  const matchingSaleIds = new Set(saleItems.map((item) => item.saleId));
+  return rows.filter((row) => matchingSaleIds.has(row._id));
 }
 
 async function computeOverviewMetrics(
@@ -573,14 +810,26 @@ async function buildDashboardSuggestions(
 export const overview = query({
   args: reportFilterArgs,
   handler: async (ctx, args) => {
-    const metrics = await computeOverviewMetrics(ctx, args);
+    const filters = resolveReportFilters(args);
+    const metrics = await computeOverviewMetrics(ctx, filters);
+    const previousMetrics = filters.compareMode
+      ? await computeOverviewMetrics(ctx, previousPeriodFor(filters))
+      : {
+          grossRevenue: 0,
+          returnValue: 0,
+          revenue: 0,
+          orderCount: 0,
+          unitsSold: 0,
+          avgOrderValue: 0,
+          paymentMix: { cash: 0, upi_mock: 0 },
+        };
     const snapshot = await ctx.db
       .query("reportSnapshots")
       .withIndex("by_key", (q) => q.eq("key", "dashboard"))
       .unique();
 
     // Daily breakdown table
-    const { fromDate, toDate } = withDateBounds(args);
+    const { fromDate, toDate } = withDateBounds(filters);
     const rollups = await ctx.db
       .query("dailySalesRollups")
       .withIndex("by_businessDate", (q) =>
@@ -603,6 +852,107 @@ export const overview = query({
     const totalOrderDiscount = normalizeMoney(
       rollups.reduce((s, r) => s + r.orderDiscountTotal, 0),
     );
+    const previousDiscounts = filters.compareMode
+      ? await ctx.db
+          .query("dailySalesRollups")
+          .withIndex("by_businessDate", (q) => {
+            const previous = withDateBounds(previousPeriodFor(filters));
+            return q.gte("businessDate", previous.fromDate).lte("businessDate", previous.toDate);
+          })
+          .take(120)
+      : [];
+
+    const currentSummary = {
+      revenue: metrics.revenue,
+      grossRevenue: metrics.grossRevenue,
+      returnValue: metrics.returnValue,
+      orderCount: metrics.orderCount,
+      unitsSold: metrics.unitsSold,
+      avgOrderValue: metrics.avgOrderValue,
+      totalDiscount: normalizeMoney(totalLineDiscount + totalOrderDiscount),
+    };
+    const previousSummary = {
+      revenue: previousMetrics.revenue,
+      grossRevenue: previousMetrics.grossRevenue,
+      returnValue: previousMetrics.returnValue,
+      orderCount: previousMetrics.orderCount,
+      unitsSold: previousMetrics.unitsSold,
+      avgOrderValue: previousMetrics.avgOrderValue,
+      totalDiscount: normalizeMoney(
+        previousDiscounts.reduce((s, r) => s + r.lineDiscountTotal + r.orderDiscountTotal, 0),
+      ),
+    };
+
+    const dailyTrend = dailyBreakdown
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((entry) => ({
+        ...entry,
+        avgOrderValue: entry.orders > 0 ? normalizeMoney(entry.revenue / entry.orders) : 0,
+      }));
+
+    const bestDay =
+      dailyBreakdown.length > 0
+        ? dailyBreakdown.reduce((best, entry) => (entry.net > best.net ? entry : best), dailyBreakdown[0])
+        : null;
+    const worstDay =
+      dailyBreakdown.length > 0
+        ? dailyBreakdown.reduce((worst, entry) => (entry.net < worst.net ? entry : worst), dailyBreakdown[0])
+        : null;
+
+    const categoryRows = await loadVariantDailyRows(ctx, filters);
+    const categoryMap = new Map<string, { categoryId: Id<"categories">; soldRevenue: number; soldQty: number; returnValue: number }>();
+    for (const row of categoryRows) {
+      const existing = categoryMap.get(row.categoryId) ?? {
+        categoryId: row.categoryId,
+        soldRevenue: 0,
+        soldQty: 0,
+        returnValue: 0,
+      };
+      existing.soldRevenue = normalizeMoney(existing.soldRevenue + row.soldRevenue);
+      existing.soldQty += row.soldQty;
+      existing.returnValue = normalizeMoney(existing.returnValue + row.returnValue);
+      categoryMap.set(row.categoryId, existing);
+    }
+    const categoryContribution = await Promise.all(
+      Array.from(categoryMap.values()).map(async (entry) => {
+        const category = await ctx.db.get(entry.categoryId);
+        return {
+          ...entry,
+          categoryName: category?.name ?? "Unknown",
+          netRevenue: normalizeMoney(entry.soldRevenue - entry.returnValue),
+        };
+      }),
+    );
+    categoryContribution.sort((a, b) => b.netRevenue - a.netRevenue);
+
+    const inventoryState = await computeInventoryHealthState(ctx, filters);
+    const exceptionCards = [
+      {
+        key: "returns_spike",
+        title: "Return pressure",
+        value: metrics.returnValue,
+        detail:
+          metrics.grossRevenue > 0
+            ? `${normalizeMoney((metrics.returnValue / metrics.grossRevenue) * 100)}% of gross`
+            : "No return activity",
+      },
+      {
+        key: "discount_load",
+        title: "Discount load",
+        value: currentSummary.totalDiscount,
+        detail:
+          metrics.grossRevenue > 0
+            ? `${normalizeMoney((currentSummary.totalDiscount / metrics.grossRevenue) * 100)}% of gross`
+            : "No sales in range",
+      },
+      {
+        key: "stock_risk",
+        title: "Low-stock risk",
+        value: String(inventoryState.lowStock.length + inventoryState.outOfStock.length),
+        detail: `${inventoryState.outOfStock.length} out, ${inventoryState.lowStock.length} low`,
+      },
+    ];
 
     return {
       metrics: {
@@ -611,7 +961,22 @@ export const overview = query({
         totalOrderDiscount,
         totalDiscount: normalizeMoney(totalLineDiscount + totalOrderDiscount),
       },
+      summary: summaryWithComparison(currentSummary, previousSummary),
       dailyBreakdown,
+      dailyTrend,
+      paymentMix: metrics.paymentMix,
+      discountMix: {
+        lineDiscount: totalLineDiscount,
+        orderDiscount: totalOrderDiscount,
+      },
+      highlights: {
+        bestDay,
+        worstDay,
+        strongestCategory: categoryContribution[0] ?? null,
+        weakestCategory: categoryContribution[categoryContribution.length - 1] ?? null,
+      },
+      categoryContribution: categoryContribution.slice(0, 8),
+      exceptionCards,
       suggestions: snapshot
         ? JSON.parse(snapshot.payload)
         : await buildDashboardSuggestions(ctx),
@@ -657,10 +1022,105 @@ export const salesSummaryStats = query({
   },
 });
 
+export const salesAnalysis = query({
+  args: reportFilterArgs,
+  handler: async (ctx, args) => {
+    const filters = resolveReportFilters(args);
+    const sales = await loadSales(ctx, filters);
+    const previousSales = filters.compareMode
+      ? await loadSales(ctx, previousPeriodFor(filters))
+      : [];
+
+    const buildSummary = (rows: Doc<"sales">[]) => {
+      const subtotal = normalizeMoney(rows.reduce((sum, row) => sum + row.subtotal, 0));
+      const total = normalizeMoney(rows.reduce((sum, row) => sum + row.total, 0));
+      const discounts = normalizeMoney(
+        rows.reduce((sum, row) => sum + row.lineDiscountTotal + row.orderDiscount, 0),
+      );
+      const returns = rows.filter((row) => row.status !== "completed").length;
+      return {
+        revenue: total,
+        subtotal,
+        discounts,
+        receipts: rows.length,
+        units: rows.reduce((sum, row) => sum + row.totalQty, 0),
+        avgOrderValue: rows.length > 0 ? normalizeMoney(total / rows.length) : 0,
+        returnCount: returns,
+      };
+    };
+
+    const trendMap = new Map<string, { date: string; revenue: number; receipts: number; discounts: number; returns: number }>();
+    const weekdayMap = new Map<string, { label: string; revenue: number; receipts: number }>();
+    const hourlyMap = new Map<number, { hour: number; revenue: number; receipts: number }>();
+    const paymentMix = { cash: 0, upi_mock: 0 };
+    let namedCustomers = 0;
+    let walkInCustomers = 0;
+
+    for (const sale of sales) {
+      const day = trendMap.get(sale.businessDate) ?? {
+        date: sale.businessDate,
+        revenue: 0,
+        receipts: 0,
+        discounts: 0,
+        returns: 0,
+      };
+      day.revenue = normalizeMoney(day.revenue + sale.total);
+      day.receipts += 1;
+      day.discounts = normalizeMoney(day.discounts + sale.lineDiscountTotal + sale.orderDiscount);
+      if (sale.status !== "completed") day.returns += 1;
+      trendMap.set(sale.businessDate, day);
+
+      const weekdayLabel = new Intl.DateTimeFormat("en-IN", { weekday: "short" }).format(new Date(sale.createdAt));
+      const weekday = weekdayMap.get(weekdayLabel) ?? { label: weekdayLabel, revenue: 0, receipts: 0 };
+      weekday.revenue = normalizeMoney(weekday.revenue + sale.total);
+      weekday.receipts += 1;
+      weekdayMap.set(weekdayLabel, weekday);
+
+      const hour = new Date(sale.createdAt).getHours();
+      const hourEntry = hourlyMap.get(hour) ?? { hour, revenue: 0, receipts: 0 };
+      hourEntry.revenue = normalizeMoney(hourEntry.revenue + sale.total);
+      hourEntry.receipts += 1;
+      hourlyMap.set(hour, hourEntry);
+
+      paymentMix[sale.paymentMethod] = normalizeMoney(paymentMix[sale.paymentMethod] + sale.total);
+      if (sale.customerName && sale.customerName.trim().length > 0) namedCustomers += 1;
+      else walkInCustomers += 1;
+    }
+
+    const topTransactions = sales
+      .slice()
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 12);
+    const discountHeavy = sales
+      .slice()
+      .sort(
+        (a, b) =>
+          b.lineDiscountTotal + b.orderDiscount - (a.lineDiscountTotal + a.orderDiscount),
+      )
+      .slice(0, 12);
+
+    return {
+      summary: summaryWithComparison(buildSummary(sales), buildSummary(previousSales)),
+      trend: Array.from(trendMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
+      weekdayBreakdown: Array.from(weekdayMap.values()).sort((a, b) => b.revenue - a.revenue),
+      hourlyBreakdown: Array.from(hourlyMap.values()).sort((a, b) => a.hour - b.hour),
+      paymentMix,
+      customerMix: {
+        named: namedCustomers,
+        walkIn: walkInCustomers,
+      },
+      topTransactions,
+      discountHeavy,
+      transactionRows: sales.slice(0, 60),
+    };
+  },
+});
+
 export const productPerformance = query({
   args: reportFilterArgs,
   handler: async (ctx, args) => {
-    const rows = await loadVariantDailyRows(ctx, args);
+    const filters = resolveReportFilters(args);
+    const rows = await loadVariantDailyRows(ctx, filters);
     const byVariant = new Map<
       string,
       {
@@ -701,12 +1161,22 @@ export const productPerformance = query({
       byVariant.set(row.variantId, existing);
     }
 
-    const allVariants = Array.from(byVariant.entries()).map(([variantId, value]) => ({
+    let allVariants = Array.from(byVariant.entries()).map(([variantId, value]) => ({
       variantId,
       ...value,
       netRevenue: normalizeMoney(value.soldRevenue - value.returnValue),
       avgPrice: value.soldQty > 0 ? normalizeMoney(value.soldRevenue / value.soldQty) : 0,
     }));
+
+    if (filters.movementBucket === "top_sellers") {
+      allVariants = allVariants.filter((entry) => entry.soldQty > 0).sort((a, b) => b.soldQty - a.soldQty);
+    } else if (filters.movementBucket === "slow_movers") {
+      allVariants = allVariants.filter((entry) => entry.soldQty > 0).sort((a, b) => a.soldQty - b.soldQty);
+    } else if (filters.movementBucket === "high_returns") {
+      allVariants = allVariants.filter((entry) => entry.returnQty > 0).sort((a, b) => b.returnQty - a.returnQty);
+    } else if (filters.movementBucket === "discount_heavy") {
+      allVariants = allVariants.sort((a, b) => b.soldRevenue - b.netRevenue - (a.soldRevenue - a.netRevenue));
+    }
 
     // Category breakdown
     const byCat = new Map<string, { categoryId: string; soldQty: number; soldRevenue: number; returnValue: number }>();
@@ -735,10 +1205,10 @@ export const productPerformance = query({
     const deadStock = allActive
       .filter((v) => !variantsWithSales.has(v._id))
       .filter((v) => {
-        if (args.categoryId && v.categoryId !== args.categoryId) return false;
-        if (args.subcategoryId && v.subcategoryId !== args.subcategoryId) return false;
-        if (args.productId && v.productId !== args.productId) return false;
-        if (args.variantId && v._id !== args.variantId) return false;
+        if (filters.categoryId && v.categoryId !== filters.categoryId) return false;
+        if (filters.subcategoryId && v.subcategoryId !== filters.subcategoryId) return false;
+        if (filters.productId && v.productId !== filters.productId) return false;
+        if (filters.variantId && v._id !== filters.variantId) return false;
         return true;
       })
       .map((v) => ({
@@ -752,9 +1222,32 @@ export const productPerformance = query({
       }))
       .slice(0, 30);
 
-    const trendingUp = await computeTrendingState(ctx, args);
+    const trendingUp = await computeTrendingState(ctx, filters);
+    const previousRows = filters.compareMode
+      ? await loadVariantDailyRows(ctx, previousPeriodFor(filters))
+      : [];
+    const currentSummary = {
+      soldQty: allVariants.reduce((sum, entry) => sum + entry.soldQty, 0),
+      soldRevenue: normalizeMoney(allVariants.reduce((sum, entry) => sum + entry.soldRevenue, 0)),
+      returnQty: allVariants.reduce((sum, entry) => sum + entry.returnQty, 0),
+      returnValue: normalizeMoney(allVariants.reduce((sum, entry) => sum + entry.returnValue, 0)),
+      netRevenue: normalizeMoney(allVariants.reduce((sum, entry) => sum + entry.netRevenue, 0)),
+    };
+    const previousSummary = {
+      soldQty: previousRows.reduce((sum, entry) => sum + entry.soldQty, 0),
+      soldRevenue: normalizeMoney(previousRows.reduce((sum, entry) => sum + entry.soldRevenue, 0)),
+      returnQty: previousRows.reduce((sum, entry) => sum + entry.returnQty, 0),
+      returnValue: normalizeMoney(previousRows.reduce((sum, entry) => sum + entry.returnValue, 0)),
+      netRevenue: normalizeMoney(previousRows.reduce((sum, entry) => sum + entry.soldRevenue - entry.returnValue, 0)),
+    };
+    const highReturnItems = allVariants
+      .filter((entry) => entry.returnQty > 0)
+      .slice()
+      .sort((a, b) => b.returnQty - a.returnQty)
+      .slice(0, 10);
 
     return {
+      summary: summaryWithComparison(currentSummary, previousSummary),
       allVariants: allVariants.sort((a, b) => b.soldRevenue - a.soldRevenue),
       topSelling: allVariants
         .slice()
@@ -764,6 +1257,7 @@ export const productPerformance = query({
         .slice()
         .sort((a, b) => a.soldQty - b.soldQty)
         .slice(0, 10),
+      highReturnItems,
       categoryBreakdown: catBreakdown.sort((a, b) => b.soldRevenue - a.soldRevenue),
       deadStock,
       trendingUp: trendingUp.slice(0, 10),
@@ -774,7 +1268,8 @@ export const productPerformance = query({
 export const inventoryHealth = query({
   args: reportFilterArgs,
   handler: async (ctx, args) => {
-    const state = await computeInventoryHealthState(ctx, args);
+    const filters = resolveReportFilters(args);
+    const state = await computeInventoryHealthState(ctx, filters);
     const all = [...state.lowStock, ...state.outOfStock, ...state.slowMoving];
     const uniqueItems = Array.from(new Map(all.map((i) => [i.variantId, i])).values());
 
@@ -784,15 +1279,16 @@ export const inventoryHealth = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .take(500);
     const filtered = fullVariants.filter((v) => {
-      if (args.categoryId && v.categoryId !== args.categoryId) return false;
-      if (args.subcategoryId && v.subcategoryId !== args.subcategoryId) return false;
-      if (args.productId && v.productId !== args.productId) return false;
-      if (args.variantId && v._id !== args.variantId) return false;
+      if (filters.categoryId && v.categoryId !== filters.categoryId) return false;
+      if (filters.subcategoryId && v.subcategoryId !== filters.subcategoryId) return false;
+      if (filters.productId && v.productId !== filters.productId) return false;
+      if (filters.variantId && v._id !== filters.variantId) return false;
       return true;
     });
     let totalStockValue = 0;
-    const tiers = { zero: 0, low: 0, medium: 0, high: 0 };
-    const enriched = await Promise.all(
+    const tiers = { zero: 0, low: 0, medium: 0, high: 0, overstock: 0 };
+    const ageBuckets = { no_recent_sale: 0, last_7_days: 0, last_30_days: 0, last_60_days: 0, over_60_days: 0 };
+    await Promise.all(
       filtered.map(async (v) => {
         const il = await getInventoryLevelOrThrow(ctx, v._id);
         const stockValue = normalizeMoney(il.onHand * v.salePrice);
@@ -801,7 +1297,17 @@ export const inventoryHealth = query({
         else if (il.onHand <= 5) tiers.low++;
         else if (il.onHand <= 20) tiers.medium++;
         else tiers.high++;
-        return { variantId: v._id, onHand: il.onHand };
+        if (il.onHand > Math.max(v.reorderThreshold * 4, 20)) tiers.overstock++;
+        const daysSinceSale =
+          typeof il.lastSaleAt === "number"
+            ? Math.floor((Date.now() - il.lastSaleAt) / 86_400_000)
+            : null;
+        if (daysSinceSale === null) ageBuckets.no_recent_sale++;
+        else if (daysSinceSale <= 7) ageBuckets.last_7_days++;
+        else if (daysSinceSale <= 30) ageBuckets.last_30_days++;
+        else if (daysSinceSale <= 60) ageBuckets.last_60_days++;
+        else ageBuckets.over_60_days++;
+        return null;
       }),
     );
     totalStockValue = normalizeMoney(totalStockValue);
@@ -814,18 +1320,50 @@ export const inventoryHealth = query({
         recommendedReorder: Math.max(0, item.reorderThreshold - item.onHand),
       }));
 
+    const lowStock = enrichList(state.lowStock).slice(0, 30);
+    const outOfStock = enrichList(state.outOfStock).slice(0, 30);
+    const slowMoving = enrichList(state.slowMoving).slice(0, 30);
+    const deadStock = slowMoving.filter((item) => item.onHand > 0 && item.daysSinceSale === null).slice(0, 30);
+    const overstock = uniqueItems.filter((item) => item.onHand > Math.max(item.reorderThreshold * 4, 20)).slice(0, 30);
+
     return {
+      summary: summaryWithComparison(
+        {
+          totalStockValue,
+          totalSKUs: filtered.length,
+          lowStock: state.lowStock.length,
+          outOfStock: state.outOfStock.length,
+          slowMoving: state.slowMoving.length,
+        },
+        { totalStockValue: 0, totalSKUs: 0, lowStock: 0, outOfStock: 0, slowMoving: 0 },
+      ),
       counts: {
         lowStock: state.lowStock.length,
         outOfStock: state.outOfStock.length,
         slowMoving: state.slowMoving.length,
+        deadStock: deadStock.length,
+        overstock: overstock.length,
       },
       totalStockValue,
       totalSKUs: filtered.length,
       stockTiers: tiers,
-      lowStock: enrichList(state.lowStock).slice(0, 30),
-      outOfStock: enrichList(state.outOfStock).slice(0, 30),
-      slowMoving: enrichList(state.slowMoving).slice(0, 30),
+      ageBuckets,
+      lowStock,
+      outOfStock,
+      slowMoving,
+      deadStock,
+      overstock,
+      visibleList:
+        filters.movementBucket === "dead_stock"
+          ? deadStock
+          : filters.movementBucket === "slow_movers"
+            ? slowMoving
+            : filters.stockState === "low_stock"
+              ? lowStock
+              : filters.stockState === "out_of_stock"
+                ? outOfStock
+                : uniqueItems.slice(0, 40),
+      revenueAtRisk: normalizeMoney(0),
     };
   },
 });
@@ -845,15 +1383,23 @@ export const returnsReport = query({
       variantId: args.variantId,
       paymentMethod: args.paymentMethod,
       returnStatus: args.returnStatus,
+      datePreset: args.datePreset,
+      compareMode: args.compareMode,
+      stockState: args.stockState,
+      movementBucket: args.movementBucket,
+      salesStatus: args.salesStatus,
+      groupBy: args.groupBy,
+      sortBy: args.sortBy,
     };
-    const returnItems = await loadReturnItems(ctx, filters);
-    const saleItems = await loadSaleItems(ctx, filters);
+    const resolvedFilters = resolveReportFilters(filters);
+    const returnItems = await loadReturnItems(ctx, resolvedFilters);
+    const saleItems = await loadSaleItems(ctx, resolvedFilters);
     const returns = await ctx.db
       .query("returns")
       .withIndex("by_businessDate", (q) =>
         q
-          .gte("businessDate", filters.fromDate ?? "0000-01-01")
-          .lte("businessDate", filters.toDate ?? "9999-12-31"),
+          .gte("businessDate", resolvedFilters.fromDate ?? "0000-01-01")
+          .lte("businessDate", resolvedFilters.toDate ?? "9999-12-31"),
       )
       .order("desc")
       .paginate(args.paginationOpts);
@@ -885,6 +1431,13 @@ export const returnsReport = query({
       .map(([variantId, v]) => ({ variantId, ...v }))
       .sort((a, b) => b.returnQty - a.returnQty)
       .slice(0, 15);
+    const timelineMap = new Map<string, { date: string; returnValue: number; returnQty: number }>();
+    for (const item of returnItems) {
+      const current = timelineMap.get(item.businessDate) ?? { date: item.businessDate, returnValue: 0, returnQty: 0 };
+      current.returnValue = normalizeMoney(current.returnValue + item.refundAmount);
+      current.returnQty += item.quantity;
+      timelineMap.set(item.businessDate, current);
+    }
 
     // Enrich return page with items
     const enrichedPage = await Promise.all(
@@ -905,16 +1458,45 @@ export const returnsReport = query({
         };
       }),
     );
+    const refundMethodMix = enrichedPage.reduce(
+      (acc, ret) => {
+        acc[ret.refundMethod] = normalizeMoney(acc[ret.refundMethod] + ret.subtotal);
+        return acc;
+      },
+      { cash: 0, upi_mock: 0 },
+    );
+    const previousSummary = resolvedFilters.compareMode
+      ? await ctx.runQuery(publicApi.reports.returnsReport, {
+          ...previousPeriodFor(resolvedFilters),
+          paginationOpts: { numItems: 1, cursor: null },
+        })
+      : null;
 
-    return {
-      summary: {
+    const summary = summaryWithComparison(
+      {
         returnValue,
         returnCount: returnItems.length,
         returnedUnits,
         returnRate,
         returnValuePct,
       },
+      previousSummary?.summary?.current ?? {
+        returnValue: 0,
+        returnCount: 0,
+        returnedUnits: 0,
+        returnRate: 0,
+        returnValuePct: 0,
+      },
+    );
+
+    return {
+      summary: {
+        ...summary,
+        ...summary.current,
+      },
       mostReturned,
+      refundMethodMix,
+      timeline: Array.from(timelineMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
       page: enrichedPage,
       isDone: returns.isDone,
       continueCursor: returns.continueCursor,
@@ -964,36 +1546,97 @@ function rowsToCsv(rows: string[][]) {
 export const exportCsv = action({
   args: {
     kind: v.union(
-      v.literal("overview"),
-      v.literal("productPerformance"),
-      v.literal("inventoryHealth"),
-      v.literal("returnsReport"),
+      v.literal("executiveSummary"),
+      v.literal("executiveTrend"),
       v.literal("salesTransactions"),
+      v.literal("salesTrend"),
+      v.literal("productPerformance"),
+      v.literal("inventoryRisk"),
+      v.literal("returnsDetail"),
+      v.literal("salesTransactions"),
+    ),
+    scope: v.optional(
+      v.union(
+        v.literal("current_view"),
+        v.literal("detail_rows"),
+        v.literal("summary_and_detail"),
+      ),
     ),
     ...reportFilterArgs,
   },
   handler: async (ctx, args) => {
-    const { kind, ...filterArgs } = args;
+    const { kind, scope, ...filterArgs } = args;
 
-    if (kind === "overview") {
+    if (kind === "executiveSummary") {
       const r: any = await ctx.runQuery(publicApi.reports.overview, filterArgs);
       const rows = [
-        ["Date", "Orders", "Revenue", "Returns", "Net", "Discounts"],
-        ...(r.dailyBreakdown ?? []).map((d: any) => [
-          d.date, d.orders, d.revenue, d.returns, d.net, d.discounts,
-        ]),
-        [],
         ["Summary Metric", "Value"],
-        ["Net Revenue", r.metrics.revenue],
-        ["Gross Revenue", r.metrics.grossRevenue],
-        ["Total Returns", r.metrics.returnValue],
-        ["Total Discounts", r.metrics.totalDiscount],
-        ["Order Count", r.metrics.orderCount],
-        ["Units Sold", r.metrics.unitsSold],
-        ["Avg Order Value", r.metrics.avgOrderValue],
-        ["Cash Revenue", r.metrics.paymentMix.cash],
-        ["UPI Revenue", r.metrics.paymentMix.upi_mock],
+        ["Net Revenue", r.summary.current.revenue],
+        ["Gross Revenue", r.summary.current.grossRevenue],
+        ["Total Returns", r.summary.current.returnValue],
+        ["Total Discounts", r.summary.current.totalDiscount],
+        ["Order Count", r.summary.current.orderCount],
+        ["Units Sold", r.summary.current.unitsSold],
+        ["Avg Order Value", r.summary.current.avgOrderValue],
+        ["Cash Revenue", r.paymentMix.cash],
+        ["UPI Revenue", r.paymentMix.upi_mock],
       ];
+      if (scope !== "current_view") {
+        rows.push([]);
+        rows.push(["Date", "Orders", "Revenue", "Returns", "Net", "Discounts"]);
+        rows.push(
+          ...(r.dailyBreakdown ?? []).map((d: any) => [
+            d.date,
+            d.orders,
+            d.revenue,
+            d.returns,
+            d.net,
+            d.discounts,
+          ]),
+        );
+      }
+      return rowsToCsv(rows);
+    }
+
+    if (kind === "executiveTrend") {
+      const r: any = await ctx.runQuery(publicApi.reports.overview, filterArgs);
+      return rowsToCsv([
+        ["Date", "Orders", "Revenue", "Returns", "Net", "Discounts", "Avg Order"],
+        ...(r.dailyTrend ?? []).map((d: any) => [
+          d.date,
+          d.orders,
+          d.revenue,
+          d.returns,
+          d.net,
+          d.discounts,
+          d.avgOrderValue,
+        ]),
+      ]);
+    }
+
+    if (kind === "salesTrend") {
+      const r: any = await ctx.runQuery(publicApi.reports.salesAnalysis, filterArgs);
+      const rows = [
+        ["Date", "Revenue", "Receipts", "Discounts", "Returns"],
+        ...(r.trend ?? []).map((entry: any) => [
+          entry.date,
+          entry.revenue,
+          entry.receipts,
+          entry.discounts,
+          entry.returns,
+        ]),
+      ];
+      if (scope === "summary_and_detail") {
+        rows.push([]);
+        rows.push(["Weekday", "Revenue", "Receipts"]);
+        rows.push(
+          ...(r.weekdayBreakdown ?? []).map((entry: any) => [
+            entry.label,
+            entry.revenue,
+            entry.receipts,
+          ]),
+        );
+      }
       return rowsToCsv(rows);
     }
 
@@ -1016,12 +1659,13 @@ export const exportCsv = action({
       ]);
     }
 
-    if (kind === "inventoryHealth") {
+    if (kind === "inventoryRisk") {
       const r: any = await ctx.runQuery(publicApi.reports.inventoryHealth, filterArgs);
       const allItems = [
         ...(r.lowStock ?? []).map((i: any) => ({ ...i, segment: "Low Stock" })),
         ...(r.outOfStock ?? []).map((i: any) => ({ ...i, segment: "Out of Stock" })),
         ...(r.slowMoving ?? []).map((i: any) => ({ ...i, segment: "Slow Moving" })),
+        ...(r.deadStock ?? []).map((i: any) => ({ ...i, segment: "Dead Stock" })),
       ];
       return rowsToCsv([
         ["Segment", "Product Code", "Display Code", "Product Name", "Variant", "On Hand", "Reorder Threshold", "Stock Value", "Reorder Qty", "Days Since Sale"],
@@ -1040,7 +1684,7 @@ export const exportCsv = action({
       ]);
     }
 
-    if (kind === "returnsReport") {
+    if (kind === "returnsDetail") {
       const r: any = await ctx.runQuery(publicApi.reports.returnsReport, {
         ...filterArgs,
         paginationOpts: { numItems: 200, cursor: null },
@@ -1065,25 +1709,17 @@ export const exportCsv = action({
       return rowsToCsv(rows);
     }
 
-    // salesTransactions — every sale as a row
-    const sales: any = await ctx.runQuery(publicApi.pos.salesList, {
-      paginationOpts: { numItems: 500, cursor: null },
-      search: null,
-      fromDate: filterArgs.fromDate,
-      toDate: filterArgs.toDate,
-      paymentMethod: filterArgs.paymentMethod,
-      status: "all",
-    });
+    const r: any = await ctx.runQuery(publicApi.reports.salesAnalysis, filterArgs);
     return rowsToCsv([
       ["Sale Code", "Date", "Status", "Payment", "Customer", "Phone", "Subtotal", "Total", "Items", "Units"],
-      ...(sales.page ?? []).map((s: any) => [
+      ...(r.transactionRows ?? []).map((s: any) => [
         s.saleCode,
         s.businessDate,
         s.status,
         s.paymentMethod,
         s.customerName ?? "Walk-in",
         s.customerPhone ?? "",
-        s.total,
+        s.subtotal,
         s.total,
         s.itemCount,
         s.totalQty,

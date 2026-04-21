@@ -5,6 +5,7 @@ import { Button, Input, Paragraph, TextArea, XStack, YStack } from 'tamagui'
 import { convexApi } from 'lib/convex'
 import { getErrorMessage } from 'lib/errors'
 import { formatNumber } from 'lib/format'
+import { hapticMedium } from 'lib/haptics'
 import { FormField } from 'components/ui/FormField'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
 
@@ -81,6 +82,7 @@ export function StockAdjustDialog({
         reason: reason.trim(),
         note: fullNote,
       })
+      hapticMedium()
       toast.show('Stock updated', {
         message: `${item.displayCode} → ${result.nextOnHand} units.`,
       })

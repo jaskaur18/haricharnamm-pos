@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { ConvexProvider } from 'convex/react'
 import { DarkTheme, ThemeProvider } from '@react-navigation/native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useFonts } from 'expo-font'
 import { SplashScreen, Stack } from 'expo-router'
 import { Provider } from 'components/Provider'
@@ -46,9 +47,11 @@ export default function RootLayout() {
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
-    <Provider>
-      <ConvexProvider client={convex}>{children}</ConvexProvider>
-    </Provider>
+    <SafeAreaProvider>
+      <Provider>
+        <ConvexProvider client={convex}>{children}</ConvexProvider>
+      </Provider>
+    </SafeAreaProvider>
   )
 }
 

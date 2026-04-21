@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Image, Platform, Pressable } from 'react-native'
-import { createPortal } from 'react-dom'
+import { Image, Modal, Platform, Pressable } from 'react-native'
 import { X } from '@tamagui/lucide-icons-2'
 import { useQuery } from 'convex/react'
 import { Button, Paragraph, ScrollView, Spinner, XStack, YStack, useMedia } from 'tamagui'
@@ -8,22 +7,29 @@ import { convexApi } from 'lib/convex'
 import { formatCurrency, formatNumber } from 'lib/format'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
 
+// Conditional import — react-dom doesn't exist on native
+let createPortal: ((children: React.ReactNode, container: Element) => React.ReactPortal) | null = null
+if (Platform.OS === 'web') {
+  try { createPortal = require('react-dom').createPortal } catch {}
+}
+
 /**
- * Lightbox that renders as a fixed overlay via portal (web) or inline (native).
- * Uses z-index 100000 to sit above Tamagui Dialog portals.
+ * Lightbox that renders as a fixed overlay via portal (web) or Modal (native).
+ * Uses z-index 100000 to sit above Tamagui Dialog portals on web.
  */
 function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | null; onClose: () => void }) {
   if (!visible || !url) return null
 
-  const content = (
+  const overlay = (
     <Pressable
       onPress={onClose}
       style={{
-        position: 'fixed' as any,
+        ...(Platform.OS === 'web' ? { position: 'fixed' as any } : {}),
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
+        flex: 1,
         backgroundColor: 'rgba(0,0,0,0.95)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -35,7 +41,7 @@ function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | n
         onPress={onClose}
         style={{
           position: 'absolute',
-          top: 20,
+          top: Platform.OS === 'web' ? 20 : 50,
           right: 20,
           width: 44,
           height: 44,
@@ -50,11 +56,17 @@ function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | n
     </Pressable>
   )
 
-  if (Platform.OS === 'web' && typeof document !== 'undefined') {
-    return createPortal(content, document.body)
+  // Web: portal to document.body for z-index above Dialog
+  if (Platform.OS === 'web' && createPortal && typeof document !== 'undefined') {
+    return createPortal(overlay, document.body)
   }
 
-  return content
+  // Native: use Modal
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      {overlay}
+    </Modal>
+  )
 }
 
 /**

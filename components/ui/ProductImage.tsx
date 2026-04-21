@@ -1,6 +1,6 @@
 import { Image } from 'react-native'
 import { Sparkles } from '@tamagui/lucide-icons-2'
-import { Paragraph, YStack } from 'tamagui'
+import { Paragraph, YStack, useMedia } from 'tamagui'
 
 export function ProductImage({
   uri,
@@ -11,6 +11,8 @@ export function ProductImage({
   size?: number
   label?: string
 }) {
+  const media = useMedia()
+  const desktop = !media.maxMd
   if (uri) {
     return (
       <Image
@@ -18,9 +20,9 @@ export function ProductImage({
         style={{
           width: size,
           height: size,
-          borderRadius: 10,
+          borderRadius: 14,
           borderWidth: 1,
-          borderColor: '#27272A',
+          borderColor: desktop ? '#27272A' : '#332c26',
         }}
       />
     )
@@ -28,18 +30,18 @@ export function ProductImage({
 
   return (
     <YStack
-      rounded="$4"
-      bg="$color3"
+      rounded="$5"
+      bg={desktop ? '$color3' : '$bgElevated'}
       borderWidth={1}
-      borderColor="$borderColor"
+      borderColor={desktop ? '$borderColor' : '$borderSubtle'}
       items="center"
       justify="center"
       gap="$0.5"
       style={{ width: size, height: size }}
     >
-      <Sparkles size={size > 48 ? 18 : 14} color="$color8" />
+      <Sparkles size={size > 48 ? 18 : 14} color={desktop ? '$color8' : '$accent'} />
       {label && size >= 48 ? (
-        <Paragraph color="$color7" fontSize={9} fontWeight="700" style={{ textAlign: 'center' }} numberOfLines={1}>
+        <Paragraph color={desktop ? '$color7' : '$textFaint'} fontSize={9} fontWeight="700" style={{ textAlign: 'center' }} numberOfLines={1}>
           {label.slice(0, 6)}
         </Paragraph>
       ) : null}

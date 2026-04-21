@@ -23,7 +23,7 @@ export function SuggestionCard({
           justify="center"
           rounded="$10"
           p="$3"
-          bg="$color3"
+          bg="$bgElevated"
         >
           <Icon size={20} color={accentColor} />
         </YStack>
@@ -35,10 +35,10 @@ export function SuggestionCard({
       {rows === undefined ? (
         <XStack items="center" gap="$2">
           <Spinner size="small" />
-          <Paragraph color="$color8" fontSize="$2">Loading…</Paragraph>
+          <Paragraph color="$textMuted" fontSize="$2">Loading…</Paragraph>
         </XStack>
       ) : rows.length === 0 ? (
-        <Paragraph color="$color8" fontSize="$2">{emptyLabel}</Paragraph>
+        <Paragraph color="$textMuted" fontSize="$2">{emptyLabel}</Paragraph>
       ) : (
         <YStack gap="$1">
           {rows.slice(0, 3).map((row, index) => (
@@ -52,10 +52,10 @@ export function SuggestionCard({
               borderBottomColor="$borderColor"
             >
               <YStack flex={1} gap="$0.5">
-                <Paragraph color="$color11" fontSize="$2" fontWeight="600" numberOfLines={1}>
+                <Paragraph color="$textSecondary" fontSize="$2" fontWeight="600" numberOfLines={1}>
                   {row.productName ?? row.returnCode ?? 'Item'}
                 </Paragraph>
-                <Paragraph color="$color8" fontSize="$1" numberOfLines={1}>
+                <Paragraph color="$textMuted" fontSize="$1" numberOfLines={1}>
                   {row.displayCode ?? row.productCode ?? row.saleCode ?? ''}
                   {row.variantLabel ? ` · ${row.variantLabel}` : ''}
                 </Paragraph>
@@ -72,7 +72,7 @@ export function SuggestionCard({
                   </Paragraph>
                 ) : null}
                 {row.createdAt ? (
-                  <Paragraph color="$color8" fontSize="$1">
+                  <Paragraph color="$textMuted" fontSize="$1">
                     {formatDate(row.createdAt)}
                   </Paragraph>
                 ) : null}

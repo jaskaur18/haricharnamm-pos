@@ -23,7 +23,12 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.honeysingh.haricharnammpos"
     },
     "web": {
       "bundler": "metro",
@@ -52,10 +57,22 @@
           "microphonePermission": false
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow HARI CHARNAMM POS to scan product barcodes."
+        }
+      ],
       "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7c04a4b3-b3b0-4ce6-9a94-481b3c3c2bc7"
+      }
     }
   }
 }

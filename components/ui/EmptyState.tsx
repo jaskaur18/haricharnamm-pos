@@ -19,31 +19,31 @@ export function EmptyState({
       gap="$3"
       py="$6"
       px="$4"
-      bg="$color2"
+      bg="$bgSurface"
       borderWidth={1}
-      borderColor="$borderColor"
-      rounded="$5"
+      borderColor="$borderSubtle"
+      rounded="$6"
       borderStyle="dashed"
     >
       <YStack
-        bg="$color3"
-        rounded="$4"
+        bg="$accentSoft"
+        rounded="$5"
         p="$3"
         items="center"
         justify="center"
       >
-        <PackageOpen size={28} color="$color7" />
+        <PackageOpen size={28} color="$accent" />
       </YStack>
       <YStack items="center" gap="$1.5" style={{ maxWidth: 360 }}>
-        <Paragraph fontSize="$5" fontWeight="700" color="$color12" style={{ textAlign: 'center' }}>
+        <Paragraph fontSize="$5" fontWeight="700" color="$textPrimary" style={{ textAlign: 'center' }}>
           {title}
         </Paragraph>
-        <Paragraph color="$color10" style={{ textAlign: 'center' }} fontSize="$3">
+        <Paragraph color="$textMuted" style={{ textAlign: 'center' }} fontSize="$3">
           {description}
         </Paragraph>
       </YStack>
       {actionLabel && onAction ? (
-        <Button theme="accent" onPress={onAction}>
+        <Button theme="accent" rounded="$5" onPress={onAction}>
           {actionLabel}
         </Button>
       ) : null}

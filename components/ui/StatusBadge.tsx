@@ -2,33 +2,33 @@ import { Paragraph } from 'tamagui'
 
 const badgeMap = {
   in_stock: {
-    bg: 'rgba(134, 239, 172, 0.15)',
-    color: '#86EFAC',
+    bg: '$successSoft',
+    color: '$success',
     label: 'In Stock',
   },
   low_stock: {
-    bg: 'rgba(253, 224, 71, 0.15)',
-    color: '#FDE047',
+    bg: '$warningSoft',
+    color: '$warning',
     label: 'Low Stock',
   },
   out_of_stock: {
-    bg: 'rgba(252, 165, 165, 0.15)',
-    color: '#FCA5A5',
+    bg: '$dangerSoft',
+    color: '$danger',
     label: 'Out of Stock',
   },
   completed: {
-    bg: 'rgba(52, 211, 153, 0.15)',
-    color: '#34D399',
+    bg: '$successSoft',
+    color: '$success',
     label: 'Completed',
   },
   returned_partial: {
-    bg: 'rgba(253, 224, 71, 0.15)',
-    color: '#FDE047',
+    bg: '$warningSoft',
+    color: '$warning',
     label: 'Partial Return',
   },
   returned_full: {
-    bg: 'rgba(252, 165, 165, 0.15)',
-    color: '#FCA5A5',
+    bg: '$dangerSoft',
+    color: '$danger',
     label: 'Full Return',
   },
 } as const
@@ -45,7 +45,7 @@ export function StatusBadge({
       bg={token.bg}
       color={token.color}
       px="$2"
-      py="$1"
+      py="$1.5"
       rounded="$10"
       fontSize="$1"
       fontWeight="700"

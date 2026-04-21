@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronDown, ChevronRight, Plus, Save } from '@tamagui/lucide-icons-2'
 import { useMutation, useQuery } from 'convex/react'
 import { Button, Input, Paragraph, Spinner, XStack, YStack, useMedia } from 'tamagui'
@@ -11,12 +12,15 @@ import { SelectionField } from 'components/ui/SelectionField'
 import { SurfaceCard } from 'components/ui/SurfaceCard'
 import { FormField } from 'components/ui/FormField'
 import { MetricCard } from 'components/ui/MetricCard'
+import { hapticMedium } from 'lib/haptics'
 import { useToastController } from '@tamagui/toast'
 
 type EditableCategory = { categoryId: string | null; name: string; parentCategoryId: string | null; isActive: boolean }
 const defaultForm: EditableCategory = { categoryId: null, name: '', parentCategoryId: null, isActive: true }
 
 export function SettingsScreen() {
+  const router = useRouter()
+  const params = useLocalSearchParams<{ create?: string | string[]; openAt?: string | string[] }>()
   const toast = useToastController()
   const media = useMedia()
   const desktop = !media.maxMd
@@ -31,6 +35,14 @@ export function SettingsScreen() {
 
   useEffect(() => { if (!editorOpen) setForm(defaultForm) }, [editorOpen])
   useEffect(() => { if (categories && expanded.size === 0) setExpanded(new Set(categories.map((c) => c._id))) }, [categories])
+  useEffect(() => {
+    const create = Array.isArray(params.create) ? params.create[0] : params.create
+    const openAt = Array.isArray(params.openAt) ? params.openAt[0] : params.openAt
+    if (create !== 'category' || !openAt) return
+    setForm(defaultForm)
+    setEditorOpen(true)
+    router.replace('/settings' as any)
+  }, [params.create, params.openAt, router])
 
   const totalSubs = (categories ?? []).reduce((s, c) => s + c.children.length, 0)
 
@@ -44,6 +56,7 @@ export function SettingsScreen() {
     setIsSaving(true)
     try {
       await saveCategory({ categoryId: form.categoryId, name: form.name.trim(), parentCategoryId: form.parentCategoryId, isActive: form.isActive })
+      hapticMedium()
       toast.show(form.categoryId ? 'Updated' : 'Created')
       setEditorOpen(false)
     } catch (e) { toast.show('Failed', { message: getErrorMessage(e) }) }
@@ -53,13 +66,17 @@ export function SettingsScreen() {
   return (
     <YStack gap="$4">
       <XStack justify="space-between" items="center" gap="$3" flexWrap="wrap">
-        <YStack gap="$0.5">
-          <Paragraph fontSize="$7" fontWeight="900" letterSpacing={-0.5}>Settings</Paragraph>
-          <Paragraph color="$color8" fontSize="$2">Categories and store structure.</Paragraph>
-        </YStack>
-        <Button theme="accent" size="$3" icon={<Plus size={14} />} onPress={() => { setForm(defaultForm); setEditorOpen(true) }} hoverStyle={{ scale: 1.02 }} pressStyle={{ scale: 0.97 }}>
-          {desktop ? 'New Category' : 'New'}
-        </Button>
+        {!media.maxMd ? (
+          <>
+            <YStack gap="$0.5">
+              <Paragraph fontSize="$7" fontWeight="900" letterSpacing={-0.5}>Settings</Paragraph>
+              <Paragraph color="$color8" fontSize="$2">Categories and store structure.</Paragraph>
+            </YStack>
+            <Button theme="accent" size="$3" icon={<Plus size={14} />} onPress={() => { setForm(defaultForm); setEditorOpen(true) }} hoverStyle={{ scale: 1.02 }} pressStyle={{ scale: 0.97 }}>
+              New Category
+            </Button>
+          </>
+        ) : null}
       </XStack>
 
       <XStack gap="$2.5" flexWrap="wrap">
@@ -121,7 +138,7 @@ export function SettingsScreen() {
       <ResponsiveDialog open={editorOpen} onOpenChange={setEditorOpen} title={form.categoryId ? 'Edit category' : 'Create category'}>
         <YStack gap="$3" py="$2">
           <FormField label="Name"><Input value={form.name} onChangeText={(n) => setForm((c) => ({ ...c, name: n }))} placeholder="e.g. Crowns" bg="$color3" borderWidth={0} px="$4" /></FormField>
-          <SelectionField label="Parent" value={form.parentCategoryId} placeholder="Top level" description="Leave empty for top-level." options={[{ label: 'Top level', value: null }, ...(categories ?? []).map((c) => ({ label: c.name, value: c._id }))]} onChange={(v) => setForm((c) => ({ ...c, parentCategoryId: v }))} />
+          <SelectionField label="Parent" value={form.parentCategoryId} placeholder="Top level" description="Leave empty for top-level." options={[{ label: 'Top level', value: null }, ...(categories ?? []).filter(c => c._id !== form.categoryId).map((c) => ({ label: c.name, value: c._id }))]} onChange={(v) => setForm((c) => ({ ...c, parentCategoryId: v }))} />
           <FormField label="Status">
             <XStack bg="$color2" rounded="$3" p="$0.5" borderWidth={1} borderColor="$borderColor">
               <Button flex={1} bg={form.isActive ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setForm((c) => ({ ...c, isActive: true }))}><Paragraph fontSize="$2" fontWeight={form.isActive ? '700' : '500'} color={form.isActive ? '$color12' : '$color8'}>Active</Paragraph></Button>

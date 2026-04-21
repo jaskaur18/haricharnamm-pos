@@ -178,6 +178,28 @@ export const catalogSearch = query({
   },
 });
 
+export const resolveBarcode = query({
+  args: { barcode: v.string() },
+  handler: async (ctx, args) => {
+    const directCode = await ctx.db
+      .query("productVariants")
+      .withIndex("by_displayCode", (q) => q.eq("displayCode", args.barcode))
+      .unique();
+    const directBarcode = await ctx.db
+      .query("productVariants")
+      .withIndex("by_barcode", (q) => q.eq("barcode", args.barcode))
+      .unique();
+    const match = [directCode, directBarcode].find(
+      (row): row is Doc<"productVariants"> => !!row && row.status === "active",
+    );
+
+    if (match) {
+      return serializeCatalogItem(ctx, match);
+    }
+    return null;
+  },
+});
+
 export const previewSale = query({
   args: {
     items: salePreviewLineValidator,
@@ -807,7 +829,7 @@ export const productMediaGallery = query({
       .withIndex("by_productId_and_sortOrder", (q) => q.eq("productId", args.productId))
       .collect();
 
-    const result = [];
+    const result: any[] = [];
     for (const row of mediaRows) {
       const url = await ctx.storage.getUrl(row.storageId);
       if (url) {

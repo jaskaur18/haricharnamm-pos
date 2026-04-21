@@ -12,10 +12,12 @@ export function SurfaceCard(props: YStackProps) {
       rounded="$6"
       p="$4"
       style={{
+        boxSizing: 'border-box',
         backdropFilter: desktop ? 'blur(18px)' : 'blur(28px)',
         WebkitBackdropFilter: desktop ? 'blur(18px)' : 'blur(28px)',
         transition: 'border-color 0.2s ease, background 0.2s ease',
         boxShadow: desktop ? '0 12px 28px rgba(0,0,0,0.32)' : '0 18px 40px rgba(0,0,0,0.18)',
+        overflow: 'visible',
       }}
       {...props}
     />

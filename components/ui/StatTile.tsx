@@ -28,12 +28,12 @@ export function StatTile({
     <SectionCard flex={1} style={{ minWidth: mobile ? 156 : 200, overflow: 'hidden' }}>
       <XStack items="center" gap="$2">
         <YStack width={4} height={mobile ? 32 : 38} rounded="$10" bg={colors.bar} />
-        <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$1" fontWeight="700" textTransform="uppercase" letterSpacing={1.4}>
+        <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$1" fontWeight="700" textTransform="uppercase" letterSpacing={1.4}>
           {label}
         </Paragraph>
       </XStack>
       <Paragraph
-        color={desktop ? '$color12' : '$textPrimary'}
+        color={desktop ? '$color12' : '$color12'}
         fontSize={mobile ? '$7' : '$8'}
         fontWeight="900"
         letterSpacing={-1}
@@ -43,7 +43,7 @@ export function StatTile({
         {value}
       </Paragraph>
       {detail ? (
-        <Paragraph color={desktop ? '$color10' : '$textSecondary'} fontSize={mobile ? '$1' : '$2'}>
+        <Paragraph color={desktop ? '$color10' : '$color11'} fontSize={mobile ? '$1' : '$2'}>
           {detail}
         </Paragraph>
       ) : null}

@@ -230,7 +230,9 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
 
       {/* Actions */}
       <XStack gap="$2" justify="flex-end">
-        <Button size="$3" bg="$color3" borderColor="$borderColor" borderWidth={1} hoverStyle={{ bg: '$color4' }} onPress={handlePrint}>Print Receipt</Button>
+        <Button size="$3" bg="$color3" borderColor="$borderColor" borderWidth={1} hoverStyle={{ bg: '$color4' }} onPress={handlePrint}>
+          <Paragraph color="$color12" fontSize="$2" fontWeight="700">Print Receipt</Paragraph>
+        </Button>
         <Button size="$3" theme="accent" disabled={!sale.items.some((i) => i.remainingQty > 0)} onPress={() => setReturnOpen(true)}>Process Return</Button>
       </XStack>
 
@@ -490,7 +492,7 @@ export function SalesScreen() {
             <XStack justify="space-between" items="center">
               <Paragraph color="$color12" fontSize="$4" fontWeight="800">Top Transactions</Paragraph>
               <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" onPress={() => router.replace('/reports?tab=sales' as any)}>
-                Reports
+                <Paragraph color="$color12" fontSize="$2" fontWeight="700">Reports</Paragraph>
               </Button>
             </XStack>
             <YStack gap="$1.5">
@@ -572,7 +574,7 @@ export function SalesScreen() {
                 )
               })}
               {status === 'CanLoadMore' ? (
-                <XStack justify="center" py="$2"><Button bg="$color3" borderColor="$borderColor" borderWidth={1} size="$3" onPress={() => loadMore(24)}>Load more</Button></XStack>
+                <XStack justify="center" py="$2"><Button bg="$color3" borderColor="$borderColor" borderWidth={1} size="$3" onPress={() => loadMore(24)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">Load more</Paragraph></Button></XStack>
               ) : null}
             </YStack>
           </YStack>
@@ -619,7 +621,7 @@ export function SalesScreen() {
             )
           })}
           {status === 'CanLoadMore' ? (
-            <XStack justify="center" py="$4"><Button bg="$color3" borderColor="$borderColor" borderWidth={1} size="$4" onPress={() => loadMore(24)}>Load more</Button></XStack>
+            <XStack justify="center" py="$4"><Button bg="$color3" borderColor="$borderColor" borderWidth={1} size="$4" onPress={() => loadMore(24)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">Load more</Paragraph></Button></XStack>
           ) : null}
 
           <ResponsiveDialog

@@ -35,10 +35,10 @@ export function EmptyState({
         <PackageOpen size={28} color="$accent" />
       </YStack>
       <YStack items="center" gap="$1.5" style={{ maxWidth: 360 }}>
-        <Paragraph fontSize="$5" fontWeight="700" color="$textPrimary" style={{ textAlign: 'center' }}>
+        <Paragraph fontSize="$5" fontWeight="700" color="$color12" style={{ textAlign: 'center' }}>
           {title}
         </Paragraph>
-        <Paragraph color="$textMuted" style={{ textAlign: 'center' }} fontSize="$3">
+        <Paragraph color="$color10" style={{ textAlign: 'center' }} fontSize="$3">
           {description}
         </Paragraph>
       </YStack>

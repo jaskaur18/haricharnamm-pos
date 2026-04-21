@@ -102,7 +102,7 @@ export function InventoryScreen() {
       px="$3"
       py="$1"
     >
-      <Search size={16} color={desktop ? '$color8' : '$textMuted'} />
+      <Search size={16} color={desktop ? '$color8' : '$color10'} />
       <Input
         value={search}
         onChangeText={setSearch}
@@ -112,7 +112,7 @@ export function InventoryScreen() {
         borderWidth={0}
         py="$2"
         px="$0"
-        color={desktop ? '$color12' : '$textPrimary'}
+        color={desktop ? '$color12' : '$color12'}
       />
       {mobile ? (
         <Button
@@ -192,7 +192,7 @@ export function InventoryScreen() {
               {filterFields}
             </XStack>
             <YStack gap="$1" items="flex-end">
-              <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">{formatNumber(items.length)} visible items</Paragraph>
+              <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">{formatNumber(items.length)} visible items</Paragraph>
               {activeFilterCount > 0 ? (
                 <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" hoverStyle={{ bg: '$color4' }} onPress={resetFilters}>
                   Reset filters
@@ -206,7 +206,7 @@ export function InventoryScreen() {
       {pageStatus === 'LoadingFirstPage' ? (
         <XStack items="center" gap="$2" py="$6" justify="center">
           <Spinner size="small" />
-          <Paragraph color="$textMuted">Loading inventory…</Paragraph>
+          <Paragraph color="$color10">Loading inventory…</Paragraph>
         </XStack>
       ) : items.length === 0 ? (
         <EmptyState title="No products found" description="Adjust your filters or create a new product to start building the catalog." actionLabel="Create product" onAction={openCreate} />
@@ -218,14 +218,14 @@ export function InventoryScreen() {
               onPress={() => setShowcaseProductId(item.productId)}
               leading={<ProductImage uri={item.mediaUrl} size={52} label={item.productCode} />}
               title={item.productName}
-              meta={<Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">{formatCurrency(item.salePrice)}</Paragraph>}
+              meta={<Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">{formatCurrency(item.salePrice)}</Paragraph>}
               subtitle={
                 <YStack gap="$1">
-                  <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2" numberOfLines={1}>
+                  <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2" numberOfLines={1}>
                     {item.displayCode} · {item.optionSummary || item.label}
                   </Paragraph>
                   <XStack justify="space-between" items="center" gap="$2">
-                    <Paragraph color={desktop ? '$color8' : '$textFaint'} fontSize="$1">
+                    <Paragraph color={desktop ? '$color8' : '$color8'} fontSize="$1">
                       {formatNumber(item.onHand)} on hand · reorder {formatNumber(item.reorderThreshold)}
                     </Paragraph>
                     <StatusBadge status={item.stockState} />
@@ -252,15 +252,15 @@ export function InventoryScreen() {
               <XStack gap="$3" items="center">
                 <ProductImage uri={item.mediaUrl} size={60} label={item.productCode} />
                 <YStack flex={1} gap="$1">
-                  <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800" numberOfLines={1}>{item.productName}</Paragraph>
-                  <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2" numberOfLines={1}>{item.displayCode} · {item.optionSummary || item.label}</Paragraph>
+                  <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800" numberOfLines={1}>{item.productName}</Paragraph>
+                  <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2" numberOfLines={1}>{item.displayCode} · {item.optionSummary || item.label}</Paragraph>
                 </YStack>
               </XStack>
               <XStack justify="space-between" items="center">
-                <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$6" fontWeight="900">{formatCurrency(item.salePrice)}</Paragraph>
+                <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$6" fontWeight="900">{formatCurrency(item.salePrice)}</Paragraph>
                 <StatusBadge status={item.stockState} />
               </XStack>
-              <Paragraph color={desktop ? '$color8' : '$textFaint'} fontSize="$2">{formatNumber(item.onHand)} on hand · reorder {formatNumber(item.reorderThreshold)}</Paragraph>
+              <Paragraph color={desktop ? '$color8' : '$color8'} fontSize="$2">{formatNumber(item.onHand)} on hand · reorder {formatNumber(item.reorderThreshold)}</Paragraph>
               <XStack gap="$2">
                 <Button flex={1} bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} hoverStyle={desktop ? { bg: '$color4' } : undefined} icon={Pencil} onPress={() => { setEditingProductId(item.productId); setEditorOpen(true) }}>
                   Edit

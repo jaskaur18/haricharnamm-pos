@@ -94,17 +94,18 @@ export function DashboardScreen() {
           subtitle={todayLabel}
           actions={
             <>
-              <XStack bg="$bgSurface" rounded="$12" p="$0.5" borderWidth={1} borderColor="$borderSubtle" gap="$0.5">
+              <XStack bg="$color2" rounded="$12" p="$0.5" borderWidth={1} borderColor="$borderColor" gap="$0.5">
                 {(Object.keys(presetLabels) as DatePreset[]).map((preset) => (
                   <Button
                     key={preset}
                     onPress={() => setDatePreset(preset)}
-                    bg={datePreset === preset ? '$accentSoft' : 'transparent'}
+                    bg={datePreset === preset ? '$color4' : 'transparent'}
                     borderWidth={0}
                     rounded="$10"
                     px="$3"
+                    hoverStyle={{ bg: datePreset === preset ? '$color4' : '$color3' }}
                   >
-                    <Paragraph color={datePreset === preset ? '$textPrimary' : '$textMuted'} fontSize="$2" fontWeight={datePreset === preset ? '700' : '600'}>
+                    <Paragraph color={datePreset === preset ? '$color12' : '$color10'} fontSize="$2" fontWeight={datePreset === preset ? '700' : '600'}>
                       {presetLabels[preset]}
                     </Paragraph>
                   </Button>
@@ -118,17 +119,17 @@ export function DashboardScreen() {
         />
       ) : null}
       {mobile ? (
-        <XStack bg="$bgSurface" rounded="$12" p="$0.5" borderWidth={1} borderColor="$borderSubtle" gap="$0.5">
+        <XStack bg="$color2" rounded="$12" p="$0.5" borderWidth={1} borderColor="$borderColor" gap="$0.5">
           {(Object.keys(presetLabels) as DatePreset[]).map((preset) => (
             <Button
               key={preset}
               onPress={() => setDatePreset(preset)}
-              bg={datePreset === preset ? '$accentSoft' : 'transparent'}
+              bg={datePreset === preset ? '$color4' : 'transparent'}
               borderWidth={0}
               rounded="$10"
               px="$3"
             >
-              <Paragraph color={datePreset === preset ? '$textPrimary' : '$textMuted'} fontSize="$2" fontWeight={datePreset === preset ? '700' : '600'}>
+              <Paragraph color={datePreset === preset ? '$color12' : '$color10'} fontSize="$2" fontWeight={datePreset === preset ? '700' : '600'}>
                 {presetLabels[preset]}
               </Paragraph>
             </Button>
@@ -158,36 +159,36 @@ export function DashboardScreen() {
         <SectionCard flex={mobile ? undefined : 1} style={{ minWidth: mobile ? '100%' as any : 340 }}>
           <XStack justify="space-between" items="center">
             <YStack gap="$0.5">
-              <Paragraph color="$textPrimary" fontSize="$5" fontWeight="800">Payment Mix</Paragraph>
-              <Paragraph color="$textMuted" fontSize="$2">{presetLabels[datePreset]} breakdown</Paragraph>
+              <Paragraph color="$color12" fontSize="$5" fontWeight="800">Payment Mix</Paragraph>
+              <Paragraph color="$color10" fontSize="$2">{presetLabels[datePreset]} breakdown</Paragraph>
             </YStack>
-            <Button size="$2.5" bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" onPress={() => router.replace('/sales' as any)}>
-              Sales
+            <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" hoverStyle={{ bg: '$color4' }} onPress={() => router.replace('/sales' as any)}>
+              <Paragraph color="$color12" fontSize="$2" fontWeight="700">Sales</Paragraph>
             </Button>
           </XStack>
 
           <YStack gap="$3">
-            <YStack rounded="$10" overflow="hidden" height={10} bg="$bgMuted">
+            <YStack rounded="$10" overflow="hidden" height={10} bg="$color3">
               <XStack flex={1}>
-                <YStack style={{ flex: cashPct }} bg="$info" />
-                <YStack style={{ flex: 100 - cashPct }} bg="$accent" />
+                <YStack style={{ flex: cashPct }} bg="$blue10" />
+                <YStack style={{ flex: 100 - cashPct }} bg="$accentBackground" />
               </XStack>
             </YStack>
             <XStack gap="$3" flexWrap="wrap">
-              <SectionCard flex={1} bg="$bgElevated" borderColor="$borderSubtle" p="$3">
-                <Paragraph color="$textFaint" fontSize="$1" textTransform="uppercase" letterSpacing={1.2}>Cash</Paragraph>
-                <Paragraph color="$textPrimary" fontSize="$6" fontWeight="800">{formatCurrency(cashAmt)}</Paragraph>
+              <SectionCard flex={1} bg="$color3" borderColor="$borderColor" p="$3">
+                <Paragraph color="$color8" fontSize="$1" textTransform="uppercase" letterSpacing={1.2}>Cash</Paragraph>
+                <Paragraph color="$color12" fontSize="$6" fontWeight="800">{formatCurrency(cashAmt)}</Paragraph>
               </SectionCard>
-              <SectionCard flex={1} bg="$bgElevated" borderColor="$borderSubtle" p="$3">
-                <Paragraph color="$textFaint" fontSize="$1" textTransform="uppercase" letterSpacing={1.2}>UPI</Paragraph>
-                <Paragraph color="$textPrimary" fontSize="$6" fontWeight="800">{formatCurrency(upiAmt)}</Paragraph>
+              <SectionCard flex={1} bg="$color3" borderColor="$borderColor" p="$3">
+                <Paragraph color="$color8" fontSize="$1" textTransform="uppercase" letterSpacing={1.2}>UPI</Paragraph>
+                <Paragraph color="$color12" fontSize="$6" fontWeight="800">{formatCurrency(upiAmt)}</Paragraph>
               </SectionCard>
             </XStack>
           </YStack>
         </SectionCard>
 
         <SectionCard flex={mobile ? undefined : 1} style={{ minWidth: mobile ? '100%' as any : 340 }}>
-          <Paragraph color="$textPrimary" fontSize="$5" fontWeight="800">Quick Actions</Paragraph>
+          <Paragraph color="$color12" fontSize="$5" fontWeight="800">Quick Actions</Paragraph>
           <YStack gap="$2">
             {[
               { label: 'Open POS', icon: ShoppingCart, href: '/pos' },
@@ -199,14 +200,15 @@ export function DashboardScreen() {
                 justify="space-between"
                 icon={action.icon}
                 iconAfter={ArrowRight}
-                bg="$bgElevated"
+                bg="$color3"
                 borderWidth={1}
-                borderColor="$borderSubtle"
+                borderColor="$borderColor"
                 rounded="$5"
                 size="$4"
+                hoverStyle={{ bg: '$color4' }}
                 onPress={() => router.replace(action.href as any)}
               >
-                {action.label}
+                <Paragraph color="$color12" fontSize="$3" fontWeight="700">{action.label}</Paragraph>
               </Button>
             ))}
           </YStack>
@@ -214,15 +216,15 @@ export function DashboardScreen() {
       </XStack>
 
       <YStack gap="$3">
-        <Paragraph color="$textPrimary" fontSize="$6" fontWeight="900">
+        <Paragraph color="$color12" fontSize="$6" fontWeight="900">
           Active Insights
         </Paragraph>
         <XStack gap="$3" flexWrap="wrap">
-          <YStack flex={1} gap="$3" style={{ minWidth: mobile ? '100%' as any : 320 }}>
+          <YStack flex={1} gap="$3" style={{ minWidth: mobile ? '100%' as any : 0 }}>
             <SuggestionCard icon={AlertTriangle} title="Low Stock" rows={suggestions?.lowStockSoon} emptyLabel="No low-stock items." accentColor="#f3d46d" />
             <SuggestionCard icon={Clock} title="Slow Moving" rows={suggestions?.slowMoving} emptyLabel="No slow movers." accentColor="#d3b5ff" />
           </YStack>
-          <YStack flex={1} gap="$3" style={{ minWidth: mobile ? '100%' as any : 320 }}>
+          <YStack flex={1} gap="$3" style={{ minWidth: mobile ? '100%' as any : 0 }}>
             <SuggestionCard icon={TrendingUp} title="Trending Up" rows={suggestions?.trendingUp} emptyLabel="No trends detected." accentColor="#61d694" />
             <SuggestionCard icon={RotateCcw} title="Recent Returns" rows={suggestions?.recentReturns} emptyLabel="No recent returns." accentColor="#ef8c82" />
           </YStack>

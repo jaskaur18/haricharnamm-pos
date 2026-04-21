@@ -33,7 +33,8 @@ function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | n
         backgroundColor: 'rgba(0,0,0,0.95)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 100000,
+        zIndex: 2147483647,
+        elevation: 2147483647,
       }}
     >
       <Image source={{ uri: url }} style={{ width: '90%', height: '85%', borderRadius: 12 } as any} resizeMode="contain" />
@@ -47,6 +48,7 @@ function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | n
           height: 44,
           borderRadius: 22,
           backgroundColor: 'rgba(255,255,255,0.15)',
+          zIndex: 2147483647,
           justifyContent: 'center',
           alignItems: 'center',
         }}
@@ -136,8 +138,8 @@ export function ProductShowcaseDialog({
               {/* Product info */}
               <YStack flex={1} gap="$3" style={{ minWidth: 220 }}>
                 <YStack gap="$1">
-                  <Paragraph fontSize={desktop ? '$8' : '$6'} fontWeight="900" letterSpacing={-0.5}>{details.name}</Paragraph>
-                  <Paragraph color="$color8" fontSize="$3" fontWeight="600">{details.productCode}</Paragraph>
+                <Paragraph color="$color12" fontSize={desktop ? '$8' : '$6'} fontWeight="900" letterSpacing={-0.5}>{details.name}</Paragraph>
+                <Paragraph color="$color8" fontSize="$3" fontWeight="600">{details.productCode}</Paragraph>
                 </YStack>
 
                 {/* Tags */}
@@ -161,8 +163,8 @@ export function ProductShowcaseDialog({
 
                 {/* Brand copy */}
                 {details.brandCopy ? (
-                  <YStack bg="$color2" rounded="$4" p="$3" borderLeftWidth={3} borderLeftColor="$accentBackground">
-                    <Paragraph color="$color9" fontStyle="italic" fontSize="$2" lineHeight={20}>
+                  <YStack bg="$color3" rounded="$4" p="$3" borderLeftWidth={3} borderLeftColor="$accentBackground">
+                    <Paragraph color="$color11" fontStyle="italic" fontSize="$2" lineHeight={20}>
                       "{details.brandCopy}"
                     </Paragraph>
                   </YStack>
@@ -180,7 +182,7 @@ export function ProductShowcaseDialog({
                   {details.variants.map((v: any, i: number) => (
                     <XStack
                       key={i}
-                      bg="$color2"
+                      bg="$color3"
                       rounded="$4"
                       px="$3"
                       py="$2.5"
@@ -191,7 +193,7 @@ export function ProductShowcaseDialog({
                       hoverStyle={{ borderColor: '$color6', bg: '$color3' }}
                     >
                       <YStack gap="$0.5" flex={1}>
-                        <Paragraph fontSize="$3" fontWeight="700">{v.label || v.optionSummary || `Variant ${i + 1}`}</Paragraph>
+                        <Paragraph color="$color12" fontSize="$3" fontWeight="700">{v.label || v.optionSummary || `Variant ${i + 1}`}</Paragraph>
                         {v.displayCode ? <Paragraph color="$color8" fontSize={10}>{v.displayCode}</Paragraph> : null}
                         {v.attributes?.length > 0 ? (
                           <XStack gap="$1.5" flexWrap="wrap" mt="$0.5">
@@ -205,7 +207,7 @@ export function ProductShowcaseDialog({
                       </YStack>
                       <XStack gap="$4" items="center">
                         <YStack items="flex-end">
-                          <Paragraph fontSize="$5" fontWeight="900">{formatCurrency(v.salePrice)}</Paragraph>
+                          <Paragraph color="$color12" fontSize="$5" fontWeight="900">{formatCurrency(v.salePrice)}</Paragraph>
                         </YStack>
                         <YStack items="flex-end" bg="$color3" rounded="$3" px="$2" py="$1">
                           <Paragraph fontSize="$2" fontWeight="700" color={v.onHand <= 0 ? '$red10' : v.onHand <= (v.reorderThreshold || 5) ? '$yellow10' : '$green10'}>

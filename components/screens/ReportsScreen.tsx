@@ -161,7 +161,7 @@ function MetricTile({
   accent?: string
 }) {
   return (
-    <SectionCard flex={1} style={{ minWidth: 180 }}>
+    <SectionCard flex={1} style={{ minWidth: 120 }}>
       <YStack gap="$2">
         <Paragraph color="$color8" fontSize="$1" fontWeight="700" letterSpacing={1.1} textTransform="uppercase">
           {label}
@@ -715,7 +715,7 @@ export function ReportsScreen() {
         <MetricTile label="Avg Order" value={overview ? formatCurrency(overview.summary.current.avgOrderValue) : '—'} detail={deltaLabel(overview?.summary?.delta?.avgOrderValue, compareMode)} />
       </XStack>
 
-        <XStack gap="$3" flexWrap="wrap">
+      <XStack gap="$3" flexWrap="wrap">
         <TrendBars title="Revenue Trend" rows={overview?.dailyTrend} labelKey="date" valueKey="net" formatter={(value) => formatCurrency(value)} />
         <SurfaceCard gap="$2.5" flex={1} style={{ minWidth: 320 }}>
           <XStack justify="space-between" items="center" gap="$2">

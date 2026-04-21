@@ -51,14 +51,14 @@ export function ResponsiveDialog({
           >
             {/* Sheet-style card from bottom */}
             <YStack
-              bg="$bgSurface"
+              bg="$color2"
               borderTopLeftRadius={24}
               borderTopRightRadius={24}
               style={{ maxHeight: '95%' }}
             >
               {/* Drag handle indicator */}
               <XStack justify="center" pt="$3" pb="$2">
-                <YStack bg="$borderStrong" style={{ width: 40, height: 5, borderRadius: 2.5 }} />
+                <YStack bg="$color6" style={{ width: 40, height: 5, borderRadius: 2.5 }} />
               </XStack>
 
               {/* Header */}
@@ -69,28 +69,28 @@ export function ResponsiveDialog({
                 px="$4"
                 pb="$3"
                 borderBottomWidth={1}
-                borderBottomColor="$borderSubtle"
+                borderBottomColor="$borderColor"
               >
                 <YStack flex={1} gap="$0.5">
-                  <Paragraph fontSize="$6" fontWeight="800" color="$textPrimary">
+                  <Paragraph fontSize="$6" fontWeight="800" color="$color12">
                     {title}
                   </Paragraph>
                   {description ? (
-                    <Paragraph color="$textMuted" fontSize="$2">
+                    <Paragraph color="$color10" fontSize="$2">
                       {description}
                     </Paragraph>
                   ) : null}
                 </YStack>
                 <Button
                   onPress={() => onOpenChange(false)}
-                  bg="$bgElevated"
+                  bg="$color3"
                   p="$2"
                   borderWidth={0}
                   style={{ borderRadius: 999 }}
-                  hoverStyle={{ bg: '$bgMuted' }}
+                  hoverStyle={{ bg: '$color4' }}
                   pressStyle={{ scale: 0.95 }}
                 >
-                  <X size={16} color="$textMuted" />
+                  <X size={16} color="$color12" />
                 </Button>
               </XStack>
 
@@ -118,39 +118,40 @@ export function ResponsiveDialog({
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
           bg="rgba(0, 0, 0, 0.7)"
+          style={{ zIndex: 9998 } as any}
         />
         <Dialog.Content
           bordered
           gap="$3"
           width={media.maxMd ? '96%' : '92%'}
-          bg="$bgSurface"
-          borderColor="$borderSubtle"
+          bg="$color2"
+          borderColor="$borderColor"
           rounded={media.maxMd ? '$4' : '$6'}
           p={media.maxMd ? '$4' : '$5'}
           enterStyle={{ opacity: 0, scale: 0.95 }}
           exitStyle={{ opacity: 0, scale: 0.95 }}
-          style={{ maxWidth: 640, maxHeight: '85vh' } as any}
+          style={{ maxWidth: 720, maxHeight: '88vh', zIndex: 9999 } as any}
         >
           <XStack justify="space-between" items="center" gap="$3">
             <YStack flex={1} gap="$0.5">
-              <Dialog.Title fontSize="$6" fontWeight="800" color="$textPrimary">
+              <Dialog.Title fontSize="$6" fontWeight="800" color="$color12">
                 {title}
               </Dialog.Title>
               {description ? (
-                <Dialog.Description color="$textMuted" fontSize="$3">
+                <Dialog.Description color="$color10" fontSize="$3">
                   {description}
                 </Dialog.Description>
               ) : null}
             </YStack>
             <Button
               onPress={() => onOpenChange(false)}
-              bg="$bgElevated"
+              bg="$color3"
               p="$2"
               borderWidth={0}
-              hoverStyle={{ bg: '$bgMuted' }}
+              hoverStyle={{ bg: '$color4' }}
               style={{ borderRadius: 999 }}
             >
-              <X size={16} color="$textMuted" />
+              <X size={16} color="$color12" />
             </Button>
           </XStack>
           <ScrollView

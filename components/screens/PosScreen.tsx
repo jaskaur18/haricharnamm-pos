@@ -321,12 +321,12 @@ export function PosScreen() {
     <YStack gap="$3.5">
       <XStack justify="space-between" items="center">
         <YStack gap="$0.5">
-          <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$6" fontWeight="900">Current Sale</Paragraph>
-          <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">{cart.length} line{cart.length === 1 ? '' : 's'} · {formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
+          <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$6" fontWeight="900">Current Sale</Paragraph>
+          <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">{cart.length} line{cart.length === 1 ? '' : 's'} · {formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
         </YStack>
         {mobile ? (
           <Button size="$2.5" bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" icon={<X size={14} />} onPress={() => setCartOpen(false)}>
-            Close
+            <Paragraph color="$color12" fontSize="$2" fontWeight="700">Close</Paragraph>
           </Button>
         ) : null}
       </XStack>
@@ -334,8 +334,8 @@ export function PosScreen() {
       {cart.length === 0 ? (
         <SectionCard items="center" justify="center" py="$7">
           <ShoppingCart size={28} color="#a2998f" />
-          <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">Cart is empty</Paragraph>
-          <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Browse products and tap add to start a sale.</Paragraph>
+          <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">Cart is empty</Paragraph>
+          <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Browse products and tap add to start a sale.</Paragraph>
         </SectionCard>
       ) : (
         <ScrollView style={{ maxHeight: mobile ? 320 : 420 }} showsVerticalScrollIndicator={false}>
@@ -347,23 +347,23 @@ export function PosScreen() {
                   <XStack gap="$2.5" items="center">
                     <ProductImage uri={line.mediaUrl} size={44} label={line.productCode} />
                     <YStack flex={1} gap="$0.5">
-                      <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$3" fontWeight="800" numberOfLines={1}>{line.productName}</Paragraph>
-                      <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$1">{line.displayCode} · {line.variantLabel}</Paragraph>
+                      <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$3" fontWeight="800" numberOfLines={1}>{line.productName}</Paragraph>
+                      <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$1">{line.displayCode} · {line.variantLabel}</Paragraph>
                     </YStack>
                     <YStack items="flex-end">
-                      <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">{previewLine ? formatCurrency(previewLine.lineTotal) : '—'}</Paragraph>
+                      <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">{previewLine ? formatCurrency(previewLine.lineTotal) : '—'}</Paragraph>
                       <Paragraph color={desktop ? '$color8' : '$textFaint'} fontSize="$1">@ {formatCurrency(line.unitPrice)}</Paragraph>
                     </YStack>
                   </XStack>
                   <XStack justify="space-between" items="center">
                     <XStack items="center" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" overflow="hidden" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'}>
                       <Button size="$2.5" bg="transparent" borderWidth={0} onPress={() => updateQty(line.variantId, line.quantity - 1)} icon={<Minus size={14} />} />
-                      <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$3" fontWeight="800" px="$2">{line.quantity}</Paragraph>
+                      <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$3" fontWeight="800" px="$2">{line.quantity}</Paragraph>
                       <Button size="$2.5" bg="transparent" borderWidth={0} onPress={() => updateQty(line.variantId, line.quantity + 1)} icon={<Plus size={14} />} />
                     </XStack>
                     <XStack items="center" gap="$2">
                       <XStack items="center" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} px="$2">
-                        <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$1">₹</Paragraph>
+                        <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$1">₹</Paragraph>
                         <Input
                           value={line.lineDiscount}
                           onChangeText={(value) => setCart((current) => current.map((item) => item.variantId === line.variantId ? { ...item, lineDiscount: value } : item))}
@@ -373,7 +373,7 @@ export function PosScreen() {
                           borderWidth={0}
                           width={50}
                           px="$1"
-                          color={desktop ? '$color12' : '$textPrimary'}
+                          color={desktop ? '$color12' : '$color12'}
                         />
                       </XStack>
                       <Button size="$2.5" bg="$dangerSoft" borderWidth={0} icon={<Trash2 size={14} color="#ef8c82" />} onPress={() => removeLine(line.variantId)} />
@@ -387,35 +387,35 @@ export function PosScreen() {
       )}
 
       <SectionCard>
-        <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">Customer & Payment</Paragraph>
+        <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">Customer & Payment</Paragraph>
         <XStack gap="$2" flexWrap="wrap">
-          <Input flex={1} value={customerName} onChangeText={setCustomerName} placeholder="Customer name" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} />
-          <Input flex={1} value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} keyboardType="phone-pad" />
+          <Input flex={1} value={customerName} onChangeText={setCustomerName} placeholder="Customer name" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} />
+          <Input flex={1} value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} keyboardType="phone-pad" />
         </XStack>
         <XStack gap="$2">
           <Button flex={1} bg={paymentMethod === 'cash' ? (desktop ? '$color4' : '$accentSoft') : (desktop ? '$color3' : '$bgElevated')} borderWidth={1} borderColor={paymentMethod === 'cash' ? (desktop ? '$accentBackground' : '$borderStrong') : (desktop ? '$borderColor' : '$borderSubtle')} onPress={() => setPaymentMethod('cash')}>
-            Cash
+            <Paragraph color="$color12" fontSize="$3" fontWeight="800">Cash</Paragraph>
           </Button>
           <Button flex={1} bg={paymentMethod === 'upi_mock' ? (desktop ? '$color4' : '$accentSoft') : (desktop ? '$color3' : '$bgElevated')} borderWidth={1} borderColor={paymentMethod === 'upi_mock' ? (desktop ? '$accentBackground' : '$borderStrong') : (desktop ? '$borderColor' : '$borderSubtle')} onPress={() => setPaymentMethod('upi_mock')}>
-            UPI
+            <Paragraph color="$color12" fontSize="$3" fontWeight="800">UPI</Paragraph>
           </Button>
         </XStack>
-        <Input value={paymentNote} onChangeText={setPaymentNote} placeholder="Payment note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} />
-        <Input value={notes} onChangeText={setNotes} placeholder="Sale note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$textPrimary'} />
+        <Input value={paymentNote} onChangeText={setPaymentNote} placeholder="Payment note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} />
+        <Input value={notes} onChangeText={setNotes} placeholder="Sale note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} />
       </SectionCard>
 
       <SectionCard>
         <XStack justify="space-between" items="center">
-          <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Order discount</Paragraph>
+          <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Order discount</Paragraph>
           <XStack items="center" gap="$1" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} px="$2">
-            <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$1">₹</Paragraph>
-            <Input value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" bg="transparent" borderWidth={0} width={70} color={desktop ? '$color12' : '$textPrimary'} />
+            <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$1">₹</Paragraph>
+            <Input value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" bg="transparent" borderWidth={0} width={70} color={desktop ? '$color12' : '$color12'} />
           </XStack>
         </XStack>
-        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$textMuted'}>Subtotal</Paragraph><Paragraph color={desktop ? '$color12' : '$textPrimary'} fontWeight="700">{formatCurrency(preview?.summary.subtotal ?? 0)}</Paragraph></XStack>
-        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$textMuted'}>Discounts</Paragraph><Paragraph color={desktop ? '$color12' : '$textPrimary'} fontWeight="700">-{formatCurrency((preview?.summary.lineDiscountTotal ?? 0) + (preview?.summary.orderDiscount ?? 0))}</Paragraph></XStack>
+        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$color10'}>Subtotal</Paragraph><Paragraph color={desktop ? '$color12' : '$color12'} fontWeight="700">{formatCurrency(preview?.summary.subtotal ?? 0)}</Paragraph></XStack>
+        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$color10'}>Discounts</Paragraph><Paragraph color={desktop ? '$color12' : '$color12'} fontWeight="700">-{formatCurrency((preview?.summary.lineDiscountTotal ?? 0) + (preview?.summary.orderDiscount ?? 0))}</Paragraph></XStack>
         <XStack justify="space-between" pt="$2" borderTopWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'}>
-          <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$4" fontWeight="800">Total</Paragraph>
+          <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">Total</Paragraph>
           <Paragraph color="$accentStrong" fontSize="$7" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
         </XStack>
         {previewError ? (
@@ -449,8 +449,8 @@ export function PosScreen() {
       {mobile ? (
         <YStack gap="$3">
           <XStack items="center" gap="$2" bg="$bgSurface" borderWidth={1} borderColor="$borderSubtle" rounded="$6" px="$3">
-            <Search size={16} color="$textMuted" />
-            <Input value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$textPrimary" />
+            <Search size={16} color="$color10" />
+            <Input value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
             {Platform.OS !== 'web' ? (
               <Button size="$2.5" theme="accent" icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)} />
             ) : null}
@@ -477,7 +477,7 @@ export function PosScreen() {
           </ScrollView>
 
           {status === 'LoadingFirstPage' ? (
-            <XStack items="center" gap="$2" py="$6" justify="center"><Spinner size="small" /><Paragraph color="$textMuted">Loading catalog…</Paragraph></XStack>
+            <XStack items="center" gap="$2" py="$6" justify="center"><Spinner size="small" /><Paragraph color="$color10">Loading catalog…</Paragraph></XStack>
           ) : (
             <YStack gap="$2.5">
               {productGroups.map((group) => {
@@ -488,10 +488,10 @@ export function PosScreen() {
                     onPress={() => setDetailsProductId(group.productId)}
                     leading={<ProductImage uri={group.mediaUrl} size={56} label={group.productCode} />}
                     title={group.productName}
-                    meta={<Paragraph color="$textPrimary" fontSize="$4" fontWeight="800">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>}
+                    meta={<Paragraph color="$color12" fontSize="$4" fontWeight="800">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>}
                     subtitle={
                       <YStack gap="$1">
-                        <Paragraph color="$textMuted" fontSize="$2">{group.productCode} · {group.variants.length} variant{group.variants.length > 1 ? 's' : ''}</Paragraph>
+                        <Paragraph color="$color10" fontSize="$2">{group.productCode} · {group.variants.length} variant{group.variants.length > 1 ? 's' : ''}</Paragraph>
                         <XStack justify="space-between" items="center">
                           <Paragraph color="$textFaint" fontSize="$1">{formatNumber(group.totalOnHand)} available</Paragraph>
                           <StatusBadge status={group.stockState} />
@@ -525,7 +525,7 @@ export function PosScreen() {
           )}
 
           {status === 'CanLoadMore' ? (
-            <XStack justify="center"><Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" onPress={() => loadMore(24)}>Load more</Button></XStack>
+            <XStack justify="center"><Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" onPress={() => loadMore(24)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">Load more</Paragraph></Button></XStack>
           ) : null}
         </YStack>
       ) : (
@@ -540,7 +540,7 @@ export function PosScreen() {
                 <Paragraph color="$color8" fontSize="$1" textTransform="uppercase" letterSpacing={1.1}>Category</Paragraph>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <XStack gap="$2" pt="$2">
-                    <Button size="$2.5" bg={categoryId === null ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === null ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(null)}>All</Button>
+                    <Button size="$2.5" bg={categoryId === null ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === null ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(null)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">All</Paragraph></Button>
                     {(categories ?? []).map((category) => (
                       <Button key={category._id} size="$2.5" bg={categoryId === category._id ? '$color4' : '$color3'} borderWidth={1} borderColor={categoryId === category._id ? '$accentBackground' : '$borderColor'} onPress={() => setCategoryId(category._id)}>
                         {category.name}
@@ -566,24 +566,37 @@ export function PosScreen() {
                       <Paragraph color="$color12" fontSize="$6" fontWeight="900">{group.minPrice === group.maxPrice ? formatCurrency(group.minPrice) : `${formatCurrency(group.minPrice)}+`}</Paragraph>
                       <StatusBadge status={group.stockState} />
                     </XStack>
-                    <Button
-                      theme={isOos ? undefined : 'accent'}
-                      bg={isOos ? '$color3' : undefined}
-                      borderWidth={isOos ? 1 : 0}
-                      borderColor="$borderColor"
-                      disabled={isOos}
-                      onPress={() => {
-                        if (isOos) return
-                        if (group.variants.length === 1) {
-                          addVariantToCart(group.variants[0])
-                          return
-                        }
-                        setVariantPickerItems(group.variants)
-                        setVariantPickerOpen(true)
-                      }}
-                    >
-                      {isOos ? 'Out of stock' : group.variants.length === 1 ? 'Add to cart' : 'Choose variant'}
-                    </Button>
+                    <XStack gap="$2">
+                      <Button
+                        flex={1}
+                        bg="$color3"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        hoverStyle={{ bg: '$color4' }}
+                        onPress={() => setDetailsProductId(group.productId)}
+                      >
+                        <Paragraph color="$color12" fontSize="$2" fontWeight="700">Details</Paragraph>
+                      </Button>
+                      <Button
+                        flex={1}
+                        theme={isOos ? undefined : 'accent'}
+                        bg={isOos ? '$color3' : undefined}
+                        borderWidth={isOos ? 1 : 0}
+                        borderColor="$borderColor"
+                        disabled={isOos}
+                        onPress={() => {
+                          if (isOos) return
+                          if (group.variants.length === 1) {
+                            addVariantToCart(group.variants[0])
+                            return
+                          }
+                          setVariantPickerItems(group.variants)
+                          setVariantPickerOpen(true)
+                        }}
+                      >
+                        {isOos ? 'Out of stock' : group.variants.length === 1 ? 'Add to cart' : 'Choose'}
+                      </Button>
+                    </XStack>
                   </SectionCard>
                 )
               })}
@@ -628,8 +641,8 @@ export function PosScreen() {
             <SectionCard key={item._id} p="$3">
               <XStack justify="space-between" items="center" gap="$3">
                 <YStack flex={1} gap="$0.5">
-                  <Paragraph color={desktop ? '$color12' : '$textPrimary'} fontSize="$3" fontWeight="800">{item.optionSummary || item.label}</Paragraph>
-                  <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">{item.displayCode} · {formatCurrency(item.salePrice)} · {formatNumber(item.onHand)} avail</Paragraph>
+                  <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$3" fontWeight="800">{item.optionSummary || item.label}</Paragraph>
+                  <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">{item.displayCode} · {formatCurrency(item.salePrice)} · {formatNumber(item.onHand)} avail</Paragraph>
                 </YStack>
                 <Button theme={item.stockState === 'out_of_stock' ? undefined : 'accent'} disabled={item.stockState === 'out_of_stock'} onPress={() => { addVariantToCart(item); setVariantPickerOpen(false) }}>
                   {item.stockState === 'out_of_stock' ? 'OOS' : 'Add'}
@@ -645,15 +658,15 @@ export function PosScreen() {
           <XStack justify="space-between" items="center" flexWrap="wrap" gap="$4">
             <YStack flex={1} gap="$3" style={{ minWidth: 220 }}>
               <SectionCard bg="$bgElevated">
-                <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Amount payable</Paragraph>
+                <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Amount payable</Paragraph>
                 <Paragraph color="$accentStrong" fontSize="$8" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
-                {customerName ? <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Customer: {customerName}</Paragraph> : null}
+                {customerName ? <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Customer: {customerName}</Paragraph> : null}
               </SectionCard>
               <SectionCard bg="$bgElevated">
-                <Paragraph color={upiTimer <= 60 ? '$danger' : desktop ? '$color12' : '$textPrimary'} fontSize="$6" fontWeight="900">
+                <Paragraph color={upiTimer <= 60 ? '$danger' : desktop ? '$color12' : '$color12'} fontSize="$6" fontWeight="900">
                   {Math.floor(upiTimer / 60)}:{(upiTimer % 60).toString().padStart(2, '0')}
                 </Paragraph>
-                <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize="$2">Expires in</Paragraph>
+                <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Expires in</Paragraph>
               </SectionCard>
             </YStack>
             <YStack items="center" justify="center" p="$3" bg="#fff" rounded="$6">

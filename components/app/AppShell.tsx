@@ -215,10 +215,10 @@ function MobileAppShell({
       >
         <XStack justify="space-between" items="center">
           <YStack gap="$0.5">
-            <Paragraph color="$textPrimary" fontSize="$7" fontWeight="900" letterSpacing={-0.8}>
+            <Paragraph color="$color12" fontSize="$7" fontWeight="900" letterSpacing={-0.8}>
               {meta.title}
             </Paragraph>
-            <Paragraph color="$textMuted" fontSize="$2">
+            <Paragraph color="$color10" fontSize="$2">
               {meta.subtitle}
             </Paragraph>
           </YStack>
@@ -299,7 +299,7 @@ function MobileAppShell({
                 >
                   <Icon color={active ? '$accentStrong' : '$textFaint'} size={18} />
                 </YStack>
-                <Paragraph color={active ? '$textPrimary' : '$textFaint'} fontSize={10} fontWeight={active ? '700' : '600'}>
+                <Paragraph color={active ? '$color12' : '$textFaint'} fontSize={10} fontWeight={active ? '700' : '600'}>
                   {item.label}
                 </Paragraph>
               </YStack>

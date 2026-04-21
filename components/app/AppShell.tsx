@@ -14,6 +14,7 @@ import {
 } from '@tamagui/lucide-icons-2'
 import { Button, Paragraph, ScrollView, XStack, YStack, useMedia } from 'tamagui'
 import { hapticLight } from 'lib/haptics'
+import { useAuthSession } from 'components/auth/AuthProvider'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
 
 const mobileNavItems = [
@@ -80,11 +81,13 @@ function DesktopAppShell({
   children,
   onNav,
   scrolled,
+  onLogout,
 }: {
   pathname: string
   children: React.ReactNode
   onNav: (href: string) => void
   scrolled: boolean
+  onLogout: () => void
 }) {
   const meta = resolveMeta(pathname)
 
@@ -139,6 +142,15 @@ function DesktopAppShell({
           <YStack gap={2} items="flex-end">
             <Paragraph color="$color7" fontSize="$2">{meta.title}</Paragraph>
           </YStack>
+          <Button
+            size="$3"
+            bg="$color3"
+            borderWidth={1}
+            borderColor="$borderColor"
+            onPress={onLogout}
+          >
+            Sign Out
+          </Button>
           <Button theme="accent" rounded="$10" icon={<ShoppingCart size={14} />} onPress={() => onNav('/pos')}>
             New Sale
           </Button>
@@ -162,10 +174,12 @@ function MobileAppShell({
   pathname,
   children,
   onNav,
+  onLogout,
 }: {
   pathname: string
   children: React.ReactNode
   onNav: (href: string) => void
+  onLogout: () => void
 }) {
   const insets = useSafeAreaInsets()
   const meta = resolveMeta(pathname)
@@ -218,6 +232,16 @@ function MobileAppShell({
             New
           </Button>
         </XStack>
+        <Button
+          size="$2.5"
+          bg="$bgElevated"
+          borderWidth={1}
+          borderColor="$borderSubtle"
+          onPress={onLogout}
+          style={{ alignSelf: 'flex-start' } as any}
+        >
+          Sign Out
+        </Button>
       </YStack>
 
       <YStack flex={1}>
@@ -307,6 +331,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const media = useMedia()
   const desktop = !media.maxMd
   const [scrolled, setScrolled] = useState(false)
+  const { logout } = useAuthSession()
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !desktop) return
@@ -321,6 +346,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return desktop
-    ? <DesktopAppShell pathname={pathname} onNav={handleNav} scrolled={scrolled}>{children}</DesktopAppShell>
-    : <MobileAppShell pathname={pathname} onNav={handleNav}>{children}</MobileAppShell>
+    ? <DesktopAppShell pathname={pathname} onNav={handleNav} scrolled={scrolled} onLogout={logout}>{children}</DesktopAppShell>
+    : <MobileAppShell pathname={pathname} onNav={handleNav} onLogout={logout}>{children}</MobileAppShell>
 }

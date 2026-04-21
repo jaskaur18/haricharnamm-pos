@@ -7,6 +7,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useFonts } from 'expo-font'
 import { SplashScreen, Stack } from 'expo-router'
 import { Provider } from 'components/Provider'
+import { AuthProvider, useAuthSession } from 'components/auth/AuthProvider'
+import { LoginScreen } from 'components/auth/LoginScreen'
 import { convex } from 'lib/convex'
 
 if (Platform.OS === 'web') {
@@ -43,7 +45,9 @@ export default function RootLayout() {
 
   return (
     <Providers>
-      <RootLayoutNav />
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
     </Providers>
   )
 }
@@ -72,4 +76,18 @@ function RootLayoutNav() {
       </Stack>
     </ThemeProvider>
   )
+}
+
+function AuthGate() {
+  const { isReady, isAuthenticated } = useAuthSession()
+
+  if (!isReady) {
+    return null
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />
+  }
+
+  return <RootLayoutNav />
 }

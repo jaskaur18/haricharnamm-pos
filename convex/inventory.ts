@@ -245,6 +245,45 @@ export const saveCategory = mutation({
   },
 });
 
+export const deleteCategory = mutation({
+  args: {
+    categoryId: v.id("categories"),
+  },
+  handler: async (ctx, args) => {
+    const children = await ctx.db
+      .query("categories")
+      .withIndex("by_parentCategoryId_and_sortOrder", (q) =>
+        q.eq("parentCategoryId", args.categoryId),
+      )
+      .take(1);
+
+    if (children.length > 0) {
+      throw new Error("Cannot delete a category that has subcategories.");
+    }
+
+    // Check if products use this category/subcategory
+    const productsUsingCategory = await ctx.db
+      .query("products")
+      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
+      .take(1);
+      
+    if (productsUsingCategory.length > 0) {
+       throw new Error("Cannot delete category. It is being referenced by existing products.");
+    }
+
+    const productsUsingSub = await ctx.db
+      .query("products")
+      .withIndex("by_subcategoryId", (q) => q.eq("subcategoryId", args.categoryId))
+      .take(1);
+
+    if (productsUsingSub.length > 0) {
+       throw new Error("Cannot delete subcategory. It is being referenced by existing products.");
+    }
+
+    await ctx.db.delete(args.categoryId);
+  },
+});
+
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {

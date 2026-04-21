@@ -535,8 +535,9 @@ export function PosScreen() {
             ) : null}
           </YStack>
         ) : (
-          <XStack gap="$4" items="flex-start">
-            <YStack flex={1} gap="$3">
+          <XStack gap="$4" items="flex-start" flex={1}>
+            <ScrollView flex={1} showsVerticalScrollIndicator={false} contentContainerStyle={{ pb: 60 } as any}>
+              <YStack gap="$3">
               <XStack items="center" gap="$2" bg="$color3" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">
                 <Search size={16} color="$color8" />
                 <Input value={search} onChangeText={setSearch} placeholder="Search products, codes, or barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
@@ -607,9 +608,12 @@ export function PosScreen() {
                   )
                 })}
               </XStack>
-            </YStack>
-            <YStack width={430} style={Platform.OS === 'web' ? { position: 'sticky' as import('react-native').FlexStyle['position'], top: 92 } : undefined}>
-              {checkoutTerminal}
+              </YStack>
+            </ScrollView>
+            <YStack width={430} flex={1}>
+              <ScrollView flex={1} showsVerticalScrollIndicator={false} contentContainerStyle={{ pb: 60 } as any}>
+                {checkoutTerminal}
+              </ScrollView>
             </YStack>
           </XStack>
         )}

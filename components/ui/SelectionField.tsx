@@ -141,6 +141,8 @@ export function SelectionField({
           maxHeight: 320,
           overflowY: 'auto',
         } as WebAwareViewStyle}
+        onMouseDown={(e: any) => e.stopPropagation()}
+        onTouchStart={(e: any) => e.stopPropagation()}
       >
         <YStack py="$1">
           {options.map((option) => {

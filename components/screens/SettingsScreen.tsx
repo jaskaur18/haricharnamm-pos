@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronDown, ChevronRight, Plus, Save } from '@tamagui/lucide-icons-2'
+import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from '@tamagui/lucide-icons-2'
 import { useMutation, useQuery } from 'convex/react'
 import { Button, Input, Paragraph, Spinner, XStack, YStack, useMedia } from 'tamagui'
 import { convexApi } from 'lib/convex'
@@ -28,6 +28,7 @@ export function SettingsScreen() {
   const categories = useQuery(convexApi.inventory.listCategories, { includeInactive: true }) as CategoryNode[] | undefined
   const seedDefaultCategories = useMutation(convexApi.inventory.seedDefaultCategories)
   const saveCategory = useMutation(convexApi.inventory.saveCategory)
+  const deleteCategory = useMutation(convexApi.inventory.deleteCategory)
 
   const [editorOpen, setEditorOpen] = useState(false)
   const [form, setForm] = useState<EditableCategory>(defaultForm)
@@ -61,6 +62,18 @@ export function SettingsScreen() {
       toast.show(form.categoryId ? 'Updated' : 'Created')
       setEditorOpen(false)
     } catch (e) { toast.show('Failed', { message: getErrorMessage(e) }) }
+    finally { setIsSaving(false) }
+  }
+
+  async function handleDelete() {
+    if (!form.categoryId) return
+    setIsSaving(true)
+    try {
+      await deleteCategory({ categoryId: form.categoryId as Id<'categories'> })
+      hapticMedium()
+      toast.show('Deleted')
+      setEditorOpen(false)
+    } catch (e) { toast.show('Can\'t delete', { message: getErrorMessage(e) }) }
     finally { setIsSaving(false) }
   }
 
@@ -146,7 +159,12 @@ export function SettingsScreen() {
               <Button flex={1} bg={!form.isActive ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setForm((c) => ({ ...c, isActive: false }))}><Paragraph fontSize="$2" fontWeight={!form.isActive ? '700' : '500'} color={!form.isActive ? '$color12' : '$color8'}>Inactive</Paragraph></Button>
             </XStack>
           </FormField>
-          <XStack justify="flex-end">
+          <XStack justify="space-between">
+            {form.categoryId ? (
+              <Button bg="$color3" borderColor="$borderColor" borderWidth={1} hoverStyle={{ bg: '#ff333320', borderColor: '#ff000040' }} icon={<Trash2 size={14} color="$color10" />} onPress={handleDelete} disabled={isSaving} pressStyle={{ scale: 0.97 }}>
+                <Paragraph color="$color11" fontSize="$3">Delete</Paragraph>
+              </Button>
+            ) : <XStack />}
             <Button theme="accent" icon={<Save size={14} />} onPress={handleSave} disabled={isSaving} hoverStyle={{ scale: 1.02 }} pressStyle={{ scale: 0.97 }}>{isSaving ? 'Saving…' : 'Save'}</Button>
           </XStack>
         </YStack>

@@ -163,9 +163,15 @@ function DesktopAppShell({
         px="$7"
         pt="$5"
         pb="$8"
-        style={{ maxWidth: 1480, width: '100%', marginLeft: 'auto', marginRight: 'auto' } as WebAwareViewStyle}
+        style={{ maxWidth: 1480, width: '100%', marginLeft: 'auto', marginRight: 'auto', flexBasis: 0 } as WebAwareViewStyle}
       >
-        {children}
+        {pathname === '/pos' ? (
+          children
+        ) : (
+          <ScrollView flex={1} showsVerticalScrollIndicator={false} contentContainerStyle={{ pb: 60 }}>
+            {children}
+          </ScrollView>
+        )}
       </YStack>
     </YStack>
   )

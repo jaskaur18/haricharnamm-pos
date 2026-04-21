@@ -2,6 +2,7 @@ import { Dimensions, KeyboardAvoidingView, Modal, Platform } from 'react-native'
 import { X } from '@tamagui/lucide-icons-2'
 import { Button, Dialog, Paragraph, ScrollView, XStack, YStack, useMedia } from 'tamagui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import type { WebAwareViewStyle } from 'types/tamagui'
 
 const isWeb = Platform.OS === 'web'
 
@@ -46,7 +47,7 @@ export function ResponsiveDialog({
         >
           <YStack
             flex={1}
-            bg="rgba(0,0,0,0.6)"
+            bg="$overlay"
             justify="flex-end"
           >
             {/* Sheet-style card from bottom */}
@@ -86,7 +87,7 @@ export function ResponsiveDialog({
                   bg="$color3"
                   p="$2"
                   borderWidth={0}
-                  style={{ borderRadius: 999 }}
+                  rounded="$12"
                   hoverStyle={{ bg: '$color4' }}
                   pressStyle={{ scale: 0.95 }}
                 >
@@ -117,8 +118,8 @@ export function ResponsiveDialog({
         <Dialog.Overlay
           enterStyle={{ opacity: 0 }}
           exitStyle={{ opacity: 0 }}
-          bg="rgba(0, 0, 0, 0.7)"
-          style={{ zIndex: 9998 } as any}
+          bg="$overlayDark"
+          style={{ zIndex: 9998 } as WebAwareViewStyle}
         />
         <Dialog.Content
           bordered
@@ -130,7 +131,8 @@ export function ResponsiveDialog({
           p={media.maxMd ? '$4' : '$5'}
           enterStyle={{ opacity: 0, scale: 0.95 }}
           exitStyle={{ opacity: 0, scale: 0.95 }}
-          style={{ maxWidth: 720, maxHeight: '88vh', zIndex: 9999 } as any}
+          style={{ maxWidth: 720, zIndex: 9999 } as WebAwareViewStyle}
+          maxH={Platform.OS === 'web' ? ('88vh' as any) : undefined}
         >
           <XStack justify="space-between" items="center" gap="$3">
             <YStack flex={1} gap="$0.5">
@@ -149,7 +151,7 @@ export function ResponsiveDialog({
               p="$2"
               borderWidth={0}
               hoverStyle={{ bg: '$color4' }}
-              style={{ borderRadius: 999 }}
+              rounded="$12"
             >
               <X size={16} color="$color12" />
             </Button>

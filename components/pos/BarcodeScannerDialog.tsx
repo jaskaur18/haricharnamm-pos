@@ -36,7 +36,7 @@ export function BarcodeScannerDialog({ open, onOpenChange, onScanned }: BarcodeS
     return (
       <ResponsiveDialog open={open} onOpenChange={onOpenChange} title="Scanner">
         <YStack items="center" py="$6" gap="$4">
-          <Paragraph style={{ textAlign: 'center' } as any}>We need your permission to show the camera to scan product barcodes.</Paragraph>
+          <Paragraph style={{ textAlign: 'center' }}>We need your permission to show the camera to scan product barcodes.</Paragraph>
           <Button theme="accent" onPress={requestPermission}>Grant Permission</Button>
         </YStack>
       </ResponsiveDialog>
@@ -55,10 +55,10 @@ export function BarcodeScannerDialog({ open, onOpenChange, onScanned }: BarcodeS
         bg="$color1" 
         rounded="$4" 
         overflow="hidden" 
-        style={{ width: '100%', height: 400, position: 'relative' } as any}
+        width="100%" height={400} position="relative"
       >
         <CameraView
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } as any}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           facing="back"
           onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
           barcodeScannerSettings={{
@@ -66,7 +66,7 @@ export function BarcodeScannerDialog({ open, onOpenChange, onScanned }: BarcodeS
           }}
         />
         {/* Overlay target window */}
-        <YStack style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' } as any} items="center" justify="center" pointerEvents="none">
+        <YStack style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} bg="$overlayDark" items="center" justify="center" pointerEvents="none">
           <YStack style={{ width: 250, height: 250, borderWidth: 2, borderColor: 'white', backgroundColor: 'transparent', borderRadius: 16 }} />
           <Paragraph color="white" mt="$4" fontWeight="600">Align barcode within frame</Paragraph>
         </YStack>

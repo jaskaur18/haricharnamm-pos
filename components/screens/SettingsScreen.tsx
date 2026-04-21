@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Plus, Save } from '@tamagui/lucide-icons-2'
 import { useMutation, useQuery } from 'convex/react'
 import { Button, Input, Paragraph, Spinner, XStack, YStack, useMedia } from 'tamagui'
 import { convexApi } from 'lib/convex'
+import { Id } from 'convex/_generated/dataModel'
 import { getErrorMessage } from 'lib/errors'
 import { CategoryNode } from 'lib/categories'
 import { formatNumber } from 'lib/format'
@@ -41,7 +42,7 @@ export function SettingsScreen() {
     if (create !== 'category' || !openAt) return
     setForm(defaultForm)
     setEditorOpen(true)
-    router.replace('/settings' as any)
+    router.replace('/settings')
   }, [params.create, params.openAt, router])
 
   const totalSubs = (categories ?? []).reduce((s, c) => s + c.children.length, 0)
@@ -55,7 +56,7 @@ export function SettingsScreen() {
     if (!form.name.trim()) { toast.show('Name required'); return }
     setIsSaving(true)
     try {
-      await saveCategory({ categoryId: form.categoryId as any, name: form.name.trim(), parentCategoryId: form.parentCategoryId as any, isActive: form.isActive })
+      await saveCategory({ categoryId: form.categoryId as Id<'categories'> | null, name: form.name.trim(), parentCategoryId: form.parentCategoryId as Id<'categories'> | null, isActive: form.isActive })
       hapticMedium()
       toast.show(form.categoryId ? 'Updated' : 'Created')
       setEditorOpen(false)
@@ -80,8 +81,8 @@ export function SettingsScreen() {
       </XStack>
 
       <XStack gap="$2.5" flexWrap="wrap">
-        <MetricCard label="Categories" value={categories ? formatNumber(categories.length) : '—'} accentColor="#E8A230" />
-        <MetricCard label="Subcategories" value={categories ? formatNumber(totalSubs) : '—'} accentColor="#60A5FA" />
+        <MetricCard label="Categories" value={categories ? formatNumber(categories.length) : '—'} tone="accent" />
+        <MetricCard label="Subcategories" value={categories ? formatNumber(totalSubs) : '—'} tone="info" />
       </XStack>
 
       {!categories ? (

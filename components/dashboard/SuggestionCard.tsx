@@ -1,13 +1,18 @@
 import { Paragraph, Spinner, XStack, YStack } from 'tamagui'
 import { formatDate, formatNumber } from 'lib/format'
 import { SurfaceCard } from 'components/ui/SurfaceCard'
+import type { SuggestionRow } from 'types/reports'
+import type { ColorTokens } from 'tamagui'
 
-// Helper to convert hex to rgba for the soft icon backgrounds
-function hexToRgba(hex: string, alpha: number) {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+type Tone = 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'purple'
+
+const toneColors: Record<Tone, { icon: string; badge: string }> = {
+  accent:  { icon: '$accent',  badge: '$accentSoft' },
+  success: { icon: '$success', badge: '$successSoft' },
+  warning: { icon: '$warning', badge: '$warningSoft' },
+  danger:  { icon: '$danger',  badge: '$dangerSoft' },
+  info:    { icon: '$info',    badge: '$infoSoft' },
+  purple:  { icon: '$purple',  badge: '$purpleSoft' },
 }
 
 export function SuggestionCard({
@@ -15,14 +20,15 @@ export function SuggestionCard({
   title,
   rows,
   emptyLabel,
-  accentColor,
+  tone,
 }: {
-  icon: any
+  icon: React.ElementType<any>
   title: string
-  rows: Array<any> | undefined
+  rows: SuggestionRow[] | undefined
   emptyLabel: string
-  accentColor: string
+  tone: Tone
 }) {
+  const colors = toneColors[tone]
   return (
     <SurfaceCard gap="$3" overflow="hidden">
       {/* Header */}
@@ -33,9 +39,9 @@ export function SuggestionCard({
           rounded="$5"
           width={36}
           height={36}
-          bg={hexToRgba(accentColor, 0.15) as any}
+          bg={colors.badge as ColorTokens}
         >
-          <Icon size={18} color={accentColor} />
+          <Icon size={18} color={colors.icon} />
         </YStack>
         <Paragraph color="$color12" fontSize="$5" fontWeight="900" letterSpacing={-0.5}>
           {title}
@@ -46,7 +52,7 @@ export function SuggestionCard({
       <YStack>
         {rows === undefined ? (
           <XStack items="center" gap="$2" py="$4" justify="center">
-            <Spinner size="small" color={accentColor} />
+            <Spinner size="small" color={colors.icon} />
             <Paragraph color="$color10" fontSize="$2" fontWeight="600">Analyzing…</Paragraph>
           </XStack>
         ) : rows.length === 0 ? (
@@ -70,7 +76,7 @@ export function SuggestionCard({
                 overflow="hidden"
               >
                 {/* Left Side: Detail */}
-                <YStack flex={1} minWidth={0} gap={2}>
+                <YStack flex={1} style={{ minWidth: 0 }} gap={2}>
                   <Paragraph color="$color12" fontSize="$2" fontWeight="800" numberOfLines={1}>
                     {row.productName ?? row.returnCode ?? 'Unknown Item'}
                   </Paragraph>
@@ -89,15 +95,15 @@ export function SuggestionCard({
                 </YStack>
 
                 {/* Right Side: Key Metric */}
-                <YStack items="flex-end" style={{ flexShrink: 0 } as any}>
+                <YStack items="flex-end" style={{ flexShrink: 0 }}>
                   {typeof row.onHand === 'number' ? (
-                    <Paragraph color={accentColor} fontSize="$3" fontWeight="900" letterSpacing={-0.5}>
+                    <Paragraph color={colors.icon as ColorTokens} fontSize="$3" fontWeight="900" letterSpacing={-0.5}>
                       {formatNumber(row.onHand)} 
                       <Paragraph color="$color10" fontSize="$1" fontWeight="600"> pcs</Paragraph>
                     </Paragraph>
                   ) : null}
                   {typeof row.growthRate === 'number' ? (
-                    <Paragraph color={accentColor} fontSize="$3" fontWeight="900" letterSpacing={-0.5}>
+                    <Paragraph color={colors.icon as ColorTokens} fontSize="$3" fontWeight="900" letterSpacing={-0.5}>
                       +{row.growthRate}%
                     </Paragraph>
                   ) : null}

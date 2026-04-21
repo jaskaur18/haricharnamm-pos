@@ -469,7 +469,7 @@ export const createSale = mutation({
       returnCount: 0,
       returnValue: 0,
       cashRevenue: args.paymentMethod === "cash" ? orderTotal : 0,
-      upiRevenue: args.paymentMethod === "upi_mock" ? orderTotal : 0,
+      upiRevenue: args.paymentMethod === "upi" ? orderTotal : 0,
     });
 
     return {
@@ -541,7 +541,7 @@ export const salesList = query({
     paymentMethod: v.union(
       v.literal("all"),
       v.literal("cash"),
-      v.literal("upi_mock"),
+      v.literal("upi"),
     ),
     status: v.union(
       v.literal("all"),

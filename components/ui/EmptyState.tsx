@@ -19,9 +19,9 @@ export function EmptyState({
       gap="$3"
       py="$6"
       px="$4"
-      bg="$bgSurface"
+      bg="$color2"
       borderWidth={1}
-      borderColor="$borderSubtle"
+      borderColor="$borderColor"
       rounded="$6"
       borderStyle="dashed"
     >

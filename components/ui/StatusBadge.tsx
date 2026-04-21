@@ -2,33 +2,33 @@ import { Paragraph } from 'tamagui'
 
 const badgeMap = {
   in_stock: {
-    bg: 'rgba(52, 211, 153, 0.16)',
-    color: '$green10',
+    bg: '$successSoft',
+    color: '$success',
     label: 'In Stock',
   },
   low_stock: {
-    bg: 'rgba(250, 204, 21, 0.16)',
-    color: '$yellow10',
+    bg: '$warningSoft',
+    color: '$warning',
     label: 'Low Stock',
   },
   out_of_stock: {
-    bg: 'rgba(248, 113, 113, 0.16)',
-    color: '$red10',
+    bg: '$dangerSoft',
+    color: '$danger',
     label: 'Out of Stock',
   },
   completed: {
-    bg: 'rgba(52, 211, 153, 0.16)',
-    color: '$green10',
+    bg: '$successSoft',
+    color: '$success',
     label: 'Completed',
   },
   returned_partial: {
-    bg: 'rgba(250, 204, 21, 0.16)',
-    color: '$yellow10',
+    bg: '$warningSoft',
+    color: '$warning',
     label: 'Partial Return',
   },
   returned_full: {
-    bg: 'rgba(248, 113, 113, 0.16)',
-    color: '$red10',
+    bg: '$dangerSoft',
+    color: '$danger',
     label: 'Full Return',
   },
 } as const

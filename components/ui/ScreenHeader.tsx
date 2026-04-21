@@ -15,18 +15,17 @@ export function ScreenHeader({
 }) {
   const media = useMedia()
   const mobile = media.maxMd
-  const desktop = !mobile
 
   return (
     <XStack justify="space-between" items={mobile ? 'flex-start' : 'center'} gap="$3" flexWrap="wrap">
       <YStack gap={compact ? '$0.5' : '$1'}>
         {eyebrow ? (
-          <Paragraph color={desktop ? '$color8' : '$accent'} fontSize="$1" fontWeight="700" letterSpacing={1.2} textTransform="uppercase">
+          <Paragraph color="$color8" fontSize="$1" fontWeight="700" letterSpacing={1.2} textTransform="uppercase">
             {eyebrow}
           </Paragraph>
         ) : null}
         <Paragraph
-          color={desktop ? '$color12' : '$textPrimary'}
+          color="$color12"
           fontSize={mobile ? (compact ? '$7' : '$8') : '$9'}
           fontWeight="900"
           letterSpacing={-1}
@@ -34,7 +33,7 @@ export function ScreenHeader({
           {title}
         </Paragraph>
         {subtitle ? (
-          <Paragraph color={desktop ? '$color10' : '$textMuted'} fontSize={mobile ? '$2' : '$3'} style={{ maxWidth: 620 }}>
+          <Paragraph color="$color10" fontSize={mobile ? '$2' : '$3'} style={{ maxWidth: 620 }}>
             {subtitle}
           </Paragraph>
         ) : null}
@@ -45,16 +44,14 @@ export function ScreenHeader({
 }
 
 export function HeaderAction(props: React.ComponentProps<typeof Button>) {
-  const media = useMedia()
-  const desktop = !media.maxMd
   return (
     <Button
       size="$3"
-      bg={desktop ? '$color3' : '$bgElevated'}
-      borderColor={desktop ? '$borderColor' : '$borderSubtle'}
+      bg="$color3"
+      borderColor="$borderColor"
       borderWidth={1}
       rounded="$5"
-      hoverStyle={{ bg: desktop ? '$color4' : '$bgMuted', borderColor: desktop ? '$borderColorHover' : '$borderStrong' }}
+      hoverStyle={{ bg: '$color4', borderColor: '$borderColorHover' }}
       pressStyle={{ scale: 0.98 }}
       {...props}
     />

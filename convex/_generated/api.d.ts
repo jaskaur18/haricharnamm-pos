@@ -11,6 +11,7 @@
 import type * as crons from "../crons.js";
 import type * as inventory from "../inventory.js";
 import type * as lib from "../lib.js";
+import type * as migrations from "../migrations.js";
 import type * as pos from "../pos.js";
 import type * as reports from "../reports.js";
 
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   inventory: typeof inventory;
   lib: typeof lib;
+  migrations: typeof migrations;
   pos: typeof pos;
   reports: typeof reports;
 }>;

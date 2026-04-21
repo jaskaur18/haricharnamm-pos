@@ -3,6 +3,7 @@ import { useMutation } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
 import { Button, Input, Paragraph, TextArea, XStack, YStack } from 'tamagui'
 import { convexApi } from 'lib/convex'
+import { Id } from 'convex/_generated/dataModel'
 import { getErrorMessage } from 'lib/errors'
 import { formatNumber } from 'lib/format'
 import { hapticMedium } from 'lib/haptics'
@@ -77,7 +78,7 @@ export function StockAdjustDialog({
     setIsSaving(true)
     try {
       const result = await adjustStock({
-        variantId: item._id as any,
+        variantId: item._id as Id<'productVariants'>,
         quantityDelta: Number(quantityDelta || 0),
         reason: reason.trim(),
         note: fullNote,

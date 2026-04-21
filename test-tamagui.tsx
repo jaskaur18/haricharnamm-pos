@@ -1,0 +1,1 @@
+import { YStack, GetProps } from 'tamagui'; function Card(props: GetProps<typeof YStack>) { return <YStack {...props} /> }; const mobile = true; const app = <Card style={{ minWidth: mobile ? '100%' : 340, overflow: 'hidden' }} flex={1} />

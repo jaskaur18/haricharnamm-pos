@@ -13,6 +13,7 @@ import { FormField } from 'components/ui/FormField'
 import { ProductImage } from 'components/ui/ProductImage'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
 import { SelectionField } from 'components/ui/SelectionField'
+import { Id } from 'convex/_generated/dataModel'
 
 type ProductDetail = {
   _id: string
@@ -77,8 +78,8 @@ export function ProductEditorDialog({
   const toast = useToastController()
   const media = useMedia()
   const desktop = !media.maxMd
-  const detail = useQuery(convexApi.inventory.detail, productId ? { productId: productId as any } : 'skip') as ProductDetail | undefined
-  const gallery = useQuery(convexApi.pos.productMediaGallery, productId ? { productId: productId as any } : 'skip' as any) as any[] | undefined
+  const detail = useQuery(convexApi.inventory.detail, productId ? { productId: productId as Id<"products"> } : 'skip') as ProductDetail | undefined
+  const gallery = useQuery(convexApi.pos.productMediaGallery, productId ? { productId: productId as Id<"products"> } : 'skip') as Array<{ _id: string; url: string }> | undefined
   const createProduct = useMutation(convexApi.inventory.create)
   const updateProduct = useMutation(convexApi.inventory.update)
   const generateUploadUrl = useMutation(convexApi.inventory.generateUploadUrl)
@@ -148,8 +149,8 @@ export function ProductEditorDialog({
       if (!asset) return
       setIsUploading(true)
       const uploadUrl = await generateUploadUrl({})
-      const storageId = await uploadSelectedImage(asset as any, uploadUrl)
-      await attachMedia({ productId: productId as any, variantId: null, storageId: storageId as any, caption: null, sortOrder: gallery ? gallery.length : 0 })
+      const storageId = await uploadSelectedImage(asset, uploadUrl)
+      await attachMedia({ productId: productId as Id<"products">, variantId: null, storageId: storageId as Id<"_storage">, caption: null, sortOrder: gallery ? gallery.length : 0 })
       toast.show('Image added')
     } catch (e) {
       toast.show('Upload failed', { message: getErrorMessage(e) })
@@ -190,14 +191,14 @@ export function ProductEditorDialog({
 
     setIsSaving(true)
     try {
-      const result = productId ? await updateProduct({ productId: productId as any, ...(payload as any) }) : await createProduct(payload as any)
+      const result = productId ? await updateProduct({ productId: productId as Id<"products">, ...payload } as Parameters<typeof updateProduct>[0]) : await createProduct(payload as Parameters<typeof createProduct>[0])
 
       // Upload all pending images
       for (let i = 0; i < pendingImages.length; i++) {
         const img = pendingImages[i]
         const uploadUrl = await generateUploadUrl({})
-        const storageId = await uploadSelectedImage(img as any, uploadUrl)
-        await attachMedia({ productId: result.productId as any, variantId: null, storageId: storageId as any, caption: null, sortOrder: i })
+        const storageId = await uploadSelectedImage(img as unknown as import('expo-image-picker').ImagePickerAsset, uploadUrl)
+        await attachMedia({ productId: result.productId as Id<"products">, variantId: null, storageId: storageId as Id<"_storage">, caption: null, sortOrder: i })
       }
 
       hapticSuccess()
@@ -240,13 +241,13 @@ export function ProductEditorDialog({
 
             {/* Thumbnails: existing + pending */}
             <XStack gap="$1" flexWrap="wrap" justify="center">
-              {existingImages.map((img: any, i: number) => (
+              {existingImages.map((img, i: number) => (
                 <YStack key={img._id || i} rounded="$2" overflow="hidden" borderWidth={1} borderColor="$borderColor">
                   <Image source={{ uri: img.url }} style={{ width: 32, height: 32 }} resizeMode="cover" />
                 </YStack>
               ))}
               {pendingImages.map((img, i) => (
-                <YStack key={`pending-${i}`} rounded="$2" overflow="hidden" borderWidth={1} borderColor="$accentBackground" style={{ position: 'relative' } as any}>
+                <YStack key={`pending-${i}`} rounded="$2" overflow="hidden" borderWidth={1} borderColor="$accentBackground" position="relative">
                   <Image source={{ uri: img.uri }} style={{ width: 32, height: 32 }} resizeMode="cover" />
                   <Button
                     size="$1"
@@ -254,7 +255,7 @@ export function ProductEditorDialog({
                     borderWidth={0}
                     rounded="$10"
                     onPress={() => setPendingImages((c) => c.filter((_, j) => j !== i))}
-                    style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16 } as any}
+                    style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16 }}
                   >
                     <X size={8} color="$color10" />
                   </Button>

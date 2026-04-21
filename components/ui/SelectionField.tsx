@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Platform, ActionSheetIOS } from 'react-native'
 import { ResponsiveDialog } from './ResponsiveDialog'
 import { FormField } from './FormField'
+import type { WebAwareViewStyle } from 'types/tamagui'
 
 let createPortal: ((children: React.ReactNode, container: Element) => React.ReactPortal) | null = null
 if (Platform.OS === 'web') {
@@ -105,20 +106,20 @@ export function SelectionField({
   const trigger = (
     <Button
       onPress={handlePress}
-      bg={desktop ? '$color3' : '$bgElevated'}
+      bg="$color3"
       borderWidth={1}
-      borderColor={desktop ? '$borderColor' : '$borderSubtle'}
-      hoverStyle={{ bg: desktop ? '$color4' : '$bgMuted', borderColor: desktop ? '$borderColorHover' : '$borderStrong' }}
-      pressStyle={{ bg: desktop ? '$color4' : '$bgMuted' }}
+      borderColor="$borderColor"
+      hoverStyle={{ bg: '$color4', borderColor: '$borderColorHover' }}
+      pressStyle={{ bg: '$color4' }}
       justify="space-between"
       rounded="$5"
       px="$3"
       height={42}
     >
-      <Paragraph color={selected ? (desktop ? '$color12' : '$color12') : (desktop ? '$color10' : '$color10')} flex={1} numberOfLines={1} fontSize={12}>
+      <Paragraph color={selected ? '$color12' : '$color10'} flex={1} numberOfLines={1} fontSize={12}>
         {selected?.label ?? placeholder}
       </Paragraph>
-      <ChevronDown size={14} color={desktop ? '$color7' : '$color8'} />
+      <ChevronDown size={14} color="$color7" />
     </Button>
   )
 
@@ -132,15 +133,14 @@ export function SelectionField({
         borderColor="$borderColorHover"
         rounded="$4"
         style={{
-          position: Platform.OS === 'web' ? 'fixed' as any : 'absolute' as any,
+          position: Platform.OS === 'web' ? 'fixed' : 'absolute',
           top: menuRect?.top ?? 0,
           left: menuRect?.left ?? 0,
           width: menuRect?.width ?? undefined,
           zIndex: 2147483000,
           maxHeight: 320,
           overflowY: 'auto',
-          boxShadow: '0 18px 50px rgba(0,0,0,0.72)',
-        } as any}
+        } as WebAwareViewStyle}
       >
         <YStack py="$1">
           {options.map((option) => {
@@ -176,7 +176,7 @@ export function SelectionField({
 
     return (
       <FormField label={label} description={description}>
-        <YStack style={{ position: 'relative' } as any} ref={containerRef as any}>
+        <YStack position="relative" ref={containerRef as any}>
           {trigger}
           {Platform.OS === 'web' && createPortal && typeof document !== 'undefined'
             ? createPortal(dropdown, document.body)
@@ -201,12 +201,12 @@ export function SelectionField({
               <Button
                 key={option.value ?? '__null__'}
                 onPress={() => { onChange(option.value); setOpen(false) }}
-                bg={active ? '$accentSoft' : '$bgSurface'}
+                bg={active ? '$accentSoft' : '$color2'}
                 borderWidth={0}
                 rounded="$5"
                 px="$3"
                 py="$2.5"
-                hoverStyle={{ bg: '$bgElevated' }}
+                hoverStyle={{ bg: '$color3' }}
                 pressStyle={{ bg: '$accentSoft' }}
                 justify="space-between"
               >

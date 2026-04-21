@@ -33,7 +33,7 @@ export function LoginScreen() {
         rounded="$8"
         p="$5"
         gap="$4"
-        style={{ maxWidth: 420 } as any}
+        maxW={420}
       >
         <YStack gap="$1.5">
           <Paragraph color="$color12" fontSize="$8" fontWeight="900" letterSpacing={-0.8}>

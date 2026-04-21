@@ -13,6 +13,7 @@ import { getErrorMessage } from 'lib/errors'
 import { formatCurrency, formatNumber } from 'lib/format'
 import { hapticError, hapticLight, hapticMedium, hapticSuccess } from 'lib/haptics'
 import { buildReceiptHtml, handleReceiptOutput, saleDetailToReceipt } from 'lib/receipt'
+import { generateUpiUrl } from 'lib/upi'
 import { useDebounce } from 'lib/useDebounce'
 import { ProductImage } from 'components/ui/ProductImage'
 import { ProductShowcaseDialog } from 'components/ui/ProductShowcaseDialog'
@@ -137,7 +138,7 @@ export function PosScreen() {
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [detailsProductId, setDetailsProductId] = useState<string | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi_mock'>('cash')
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'upi'>('cash')
   const [paymentNote, setPaymentNote] = useState('')
   const [notes, setNotes] = useState('')
   const [variantPickerOpen, setVariantPickerOpen] = useState(false)
@@ -148,6 +149,7 @@ export function PosScreen() {
   const [cartOpen, setCartOpen] = useState(false)
   const [showUpiDialog, setShowUpiDialog] = useState(false)
   const [upiTimer, setUpiTimer] = useState(300)
+  const [completedSale, setCompletedSale] = useState<{ id: string; code: string; total: number } | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
 
   useEffect(() => {
@@ -169,7 +171,7 @@ export function PosScreen() {
   const debouncedSearch = useDebounce(search, 250)
   const { results, status, loadMore } = usePaginatedQuery(
     convexApi.pos.catalogSearch,
-    { search: debouncedSearch.trim() || null, categoryId: categoryId as any, subcategoryId: subcategoryId as any },
+    { search: debouncedSearch.trim() || null, categoryId: categoryId as import('convex/_generated/dataModel').Id<'categories'> | null, subcategoryId: subcategoryId as import('convex/_generated/dataModel').Id<'categories'> | null },
     { initialNumItems: 24 },
   )
   const catalog = (results ?? []) as CatalogItem[]
@@ -188,7 +190,7 @@ export function PosScreen() {
       }
       try {
         const response = await convex.query(convexApi.pos.previewSale, {
-          items: cart.map((line) => ({ variantId: line.variantId as any, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
+          items: cart.map((line) => ({ variantId: line.variantId as import('convex/_generated/dataModel').Id<'productVariants'>, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
           orderDiscount: Number(orderDiscount || 0),
         })
         if (!cancelled) {
@@ -247,8 +249,10 @@ export function PosScreen() {
   async function executeCheckout() {
     setIsSubmitting(true)
     try {
+      const finalTotal = preview?.summary.total ?? 0
+
       const result = await createSale({
-        items: cart.map((line) => ({ variantId: line.variantId as any, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
+        items: cart.map((line) => ({ variantId: line.variantId as import('convex/_generated/dataModel').Id<'productVariants'>, quantity: line.quantity, lineDiscount: Number(line.lineDiscount || 0) })),
         orderDiscount: Number(orderDiscount || 0),
         paymentMethod,
         paymentNote: paymentNote.trim() || null,
@@ -257,7 +261,7 @@ export function PosScreen() {
         notes: notes.trim() || null,
       })
       const sale = await convex.query(convexApi.pos.saleDetail, { saleId: result.saleId })
-      const receipt = saleDetailToReceipt(sale as any)
+      const receipt = saleDetailToReceipt(sale as Parameters<typeof saleDetailToReceipt>[0])
       if (receipt) await handleReceiptOutput(buildReceiptHtml(receipt), receipt.saleCode)
       hapticSuccess()
       toast.show('Sale completed', { message: `${result.saleCode} saved.` })
@@ -269,8 +273,15 @@ export function PosScreen() {
       setPaymentNote('')
       setNotes('')
       setCartOpen(false)
-      setShowUpiDialog(false)
-      router.replace(`/sales?saleId=${result.saleId}` as any)
+
+      if (paymentMethod === 'upi') {
+        setCompletedSale({ id: result.saleId, code: result.saleCode, total: finalTotal })
+        setUpiTimer(300)
+        setShowUpiDialog(true)
+        return
+      }
+
+      router.replace(`/sales?saleId=${result.saleId}` as import('expo-router').Href)
     } catch (error) {
       toast.show('Checkout failed', { message: getErrorMessage(error) })
     } finally {
@@ -285,11 +296,6 @@ export function PosScreen() {
     }
     if (previewError) {
       toast.show('Fix errors first', { message: previewError })
-      return
-    }
-    if (paymentMethod === 'upi_mock') {
-      setUpiTimer(300)
-      setShowUpiDialog(true)
       return
     }
     void executeCheckout()
@@ -310,7 +316,7 @@ export function PosScreen() {
         return
       }
       hapticSuccess()
-      addVariantToCart(match as any)
+      addVariantToCart(match)
       toast.show('Added to cart', { message: match.optionSummary || match.label })
     } catch {
       toast.show('Scan Error', { message: 'Could not lookup barcode.' })
@@ -321,11 +327,11 @@ export function PosScreen() {
     <YStack gap="$3.5">
       <XStack justify="space-between" items="center">
         <YStack gap="$0.5">
-          <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$6" fontWeight="900">Current Sale</Paragraph>
-          <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">{cart.length} line{cart.length === 1 ? '' : 's'} · {formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
+          <Paragraph color="$color12" fontSize="$6" fontWeight="900">Current Sale</Paragraph>
+          <Paragraph color="$color10" fontSize="$2">{cart.length} line{cart.length === 1 ? '' : 's'} · {formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
         </YStack>
         {mobile ? (
-          <Button size="$2.5" bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" icon={<X size={14} />} onPress={() => setCartOpen(false)}>
+          <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" icon={<X size={14} />} onPress={() => setCartOpen(false)}>
             <Paragraph color="$color12" fontSize="$2" fontWeight="700">Close</Paragraph>
           </Button>
         ) : null}
@@ -333,9 +339,9 @@ export function PosScreen() {
 
       {cart.length === 0 ? (
         <SectionCard items="center" justify="center" py="$7">
-          <ShoppingCart size={28} color="#a2998f" />
-          <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">Cart is empty</Paragraph>
-          <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Browse products and tap add to start a sale.</Paragraph>
+          <ShoppingCart size={28} color="$color8" />
+          <Paragraph color="$color12" fontSize="$4" fontWeight="800">Cart is empty</Paragraph>
+          <Paragraph color="$color10" fontSize="$2">Browse products and tap add to start a sale.</Paragraph>
         </SectionCard>
       ) : (
         <ScrollView style={{ maxHeight: mobile ? 320 : 420 }} showsVerticalScrollIndicator={false}>
@@ -347,23 +353,23 @@ export function PosScreen() {
                   <XStack gap="$2.5" items="center">
                     <ProductImage uri={line.mediaUrl} size={44} label={line.productCode} />
                     <YStack flex={1} gap="$0.5">
-                      <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$3" fontWeight="800" numberOfLines={1}>{line.productName}</Paragraph>
-                      <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$1">{line.displayCode} · {line.variantLabel}</Paragraph>
+                      <Paragraph color="$color12" fontSize="$3" fontWeight="800" numberOfLines={1}>{line.productName}</Paragraph>
+                      <Paragraph color="$color10" fontSize="$1">{line.displayCode} · {line.variantLabel}</Paragraph>
                     </YStack>
                     <YStack items="flex-end">
-                      <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">{previewLine ? formatCurrency(previewLine.lineTotal) : '—'}</Paragraph>
-                      <Paragraph color={desktop ? '$color8' : '$textFaint'} fontSize="$1">@ {formatCurrency(line.unitPrice)}</Paragraph>
+                      <Paragraph color="$color12" fontSize="$4" fontWeight="800">{previewLine ? formatCurrency(previewLine.lineTotal) : '—'}</Paragraph>
+                      <Paragraph color="$color8" fontSize="$1">@ {formatCurrency(line.unitPrice)}</Paragraph>
                     </YStack>
                   </XStack>
                   <XStack justify="space-between" items="center">
-                    <XStack items="center" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" overflow="hidden" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'}>
+                    <XStack items="center" bg="$color3" rounded="$5" overflow="hidden" borderWidth={1} borderColor="$borderColor">
                       <Button size="$2.5" bg="transparent" borderWidth={0} onPress={() => updateQty(line.variantId, line.quantity - 1)} icon={<Minus size={14} />} />
-                      <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$3" fontWeight="800" px="$2">{line.quantity}</Paragraph>
+                      <Paragraph color="$color12" fontSize="$3" fontWeight="800" px="$2">{line.quantity}</Paragraph>
                       <Button size="$2.5" bg="transparent" borderWidth={0} onPress={() => updateQty(line.variantId, line.quantity + 1)} icon={<Plus size={14} />} />
                     </XStack>
                     <XStack items="center" gap="$2">
-                      <XStack items="center" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} px="$2">
-                        <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$1">₹</Paragraph>
+                      <XStack items="center" bg="$color3" rounded="$5" borderWidth={1} borderColor="$borderColor" px="$2">
+                        <Paragraph color="$color10" fontSize="$1">₹</Paragraph>
                         <Input
                           value={line.lineDiscount}
                           onChangeText={(value) => setCart((current) => current.map((item) => item.variantId === line.variantId ? { ...item, lineDiscount: value } : item))}
@@ -373,10 +379,10 @@ export function PosScreen() {
                           borderWidth={0}
                           width={50}
                           px="$1"
-                          color={desktop ? '$color12' : '$color12'}
+                          color="$color12"
                         />
                       </XStack>
-                      <Button size="$2.5" bg="$dangerSoft" borderWidth={0} icon={<Trash2 size={14} color="#ef8c82" />} onPress={() => removeLine(line.variantId)} />
+                      <Button size="$2.5" bg="$dangerSoft" borderWidth={0} icon={<Trash2 size={14} color="$danger" />} onPress={() => removeLine(line.variantId)} />
                     </XStack>
                   </XStack>
                 </SectionCard>
@@ -387,36 +393,36 @@ export function PosScreen() {
       )}
 
       <SectionCard>
-        <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">Customer & Payment</Paragraph>
+        <Paragraph color="$color12" fontSize="$4" fontWeight="800">Customer & Payment</Paragraph>
         <XStack gap="$2" flexWrap="wrap">
-          <Input flex={1} value={customerName} onChangeText={setCustomerName} placeholder="Customer name" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} />
-          <Input flex={1} value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} keyboardType="phone-pad" />
+          <Input flex={1} value={customerName} onChangeText={setCustomerName} placeholder="Customer name" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
+          <Input flex={1} value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" keyboardType="phone-pad" />
         </XStack>
         <XStack gap="$2">
-          <Button flex={1} bg={paymentMethod === 'cash' ? (desktop ? '$color4' : '$accentSoft') : (desktop ? '$color3' : '$bgElevated')} borderWidth={1} borderColor={paymentMethod === 'cash' ? (desktop ? '$accentBackground' : '$borderStrong') : (desktop ? '$borderColor' : '$borderSubtle')} onPress={() => setPaymentMethod('cash')}>
+          <Button flex={1} bg={paymentMethod === 'cash' ? '$color4' : '$color3'} borderWidth={1} borderColor={paymentMethod === 'cash' ? '$accentBackground' : '$borderColor'} onPress={() => setPaymentMethod('cash')}>
             <Paragraph color="$color12" fontSize="$3" fontWeight="800">Cash</Paragraph>
           </Button>
-          <Button flex={1} bg={paymentMethod === 'upi_mock' ? (desktop ? '$color4' : '$accentSoft') : (desktop ? '$color3' : '$bgElevated')} borderWidth={1} borderColor={paymentMethod === 'upi_mock' ? (desktop ? '$accentBackground' : '$borderStrong') : (desktop ? '$borderColor' : '$borderSubtle')} onPress={() => setPaymentMethod('upi_mock')}>
+          <Button flex={1} bg={paymentMethod === 'upi' ? '$color4' : '$color3'} borderWidth={1} borderColor={paymentMethod === 'upi' ? '$accentBackground' : '$borderColor'} onPress={() => setPaymentMethod('upi')}>
             <Paragraph color="$color12" fontSize="$3" fontWeight="800">UPI</Paragraph>
           </Button>
         </XStack>
-        <Input value={paymentNote} onChangeText={setPaymentNote} placeholder="Payment note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} />
-        <Input value={notes} onChangeText={setNotes} placeholder="Sale note (optional)" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} color={desktop ? '$color12' : '$color12'} />
+        <Input value={paymentNote} onChangeText={setPaymentNote} placeholder="Payment note (optional)" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
+        <Input value={notes} onChangeText={setNotes} placeholder="Sale note (optional)" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
       </SectionCard>
 
       <SectionCard>
         <XStack justify="space-between" items="center">
-          <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Order discount</Paragraph>
-          <XStack items="center" gap="$1" bg={desktop ? '$color3' : '$bgElevated'} rounded="$5" borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} px="$2">
-            <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$1">₹</Paragraph>
-            <Input value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" bg="transparent" borderWidth={0} width={70} color={desktop ? '$color12' : '$color12'} />
+          <Paragraph color="$color10" fontSize="$2">Order discount</Paragraph>
+          <XStack items="center" gap="$1" bg="$color3" rounded="$5" borderWidth={1} borderColor="$borderColor" px="$2">
+            <Paragraph color="$color10" fontSize="$1">₹</Paragraph>
+            <Input value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" bg="transparent" borderWidth={0} width={70} color="$color12" />
           </XStack>
         </XStack>
-        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$color10'}>Subtotal</Paragraph><Paragraph color={desktop ? '$color12' : '$color12'} fontWeight="700">{formatCurrency(preview?.summary.subtotal ?? 0)}</Paragraph></XStack>
-        <XStack justify="space-between"><Paragraph color={desktop ? '$color10' : '$color10'}>Discounts</Paragraph><Paragraph color={desktop ? '$color12' : '$color12'} fontWeight="700">-{formatCurrency((preview?.summary.lineDiscountTotal ?? 0) + (preview?.summary.orderDiscount ?? 0))}</Paragraph></XStack>
-        <XStack justify="space-between" pt="$2" borderTopWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'}>
-          <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">Total</Paragraph>
-          <Paragraph color="$accentStrong" fontSize="$7" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
+        <XStack justify="space-between"><Paragraph color="$color10">Subtotal</Paragraph><Paragraph color="$color12" fontWeight="700">{formatCurrency(preview?.summary.subtotal ?? 0)}</Paragraph></XStack>
+        <XStack justify="space-between"><Paragraph color="$color10">Discounts</Paragraph><Paragraph color="$color12" fontWeight="700">-{formatCurrency((preview?.summary.lineDiscountTotal ?? 0) + (preview?.summary.orderDiscount ?? 0))}</Paragraph></XStack>
+        <XStack justify="space-between" pt="$2" borderTopWidth={1} borderColor="$borderColor">
+          <Paragraph color="$color12" fontSize="$4" fontWeight="800">Total</Paragraph>
+          <Paragraph color="$color10" fontSize="$7" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
         </XStack>
         {previewError ? (
           <Paragraph color="$danger" fontSize="$2">{previewError}</Paragraph>
@@ -439,7 +445,7 @@ export function PosScreen() {
             title="Point of Sale"
             subtitle="Fast product search and a cleaner one-handed checkout flow."
             actions={
-              <HeaderAction bg={desktop ? '$color3' : '$bgElevated'} borderColor={desktop ? '$borderColor' : '$borderSubtle'} borderWidth={1} icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)}>
+              <HeaderAction bg="$color3" borderColor="$borderColor" borderWidth={1} icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)}>
                 Scan
               </HeaderAction>
             }
@@ -448,7 +454,7 @@ export function PosScreen() {
 
         {mobile ? (
           <YStack gap="$3">
-            <XStack items="center" gap="$2" bg="$bgSurface" borderWidth={1} borderColor="$borderSubtle" rounded="$6" px="$3">
+            <XStack items="center" gap="$2" bg="$color2" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">
               <Search size={16} color="$color10" />
               <Input value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
               {Platform.OS !== 'web' ? (
@@ -458,16 +464,16 @@ export function PosScreen() {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 24 } as any}>
               <XStack gap="$2">
-                <Button size="$3" bg={categoryId === null ? '$accentSoft' : '$bgSurface'} borderWidth={1} borderColor={categoryId === null ? '$borderStrong' : '$borderSubtle'} onPress={() => setCategoryId(null)}>
+                <Button size="$3" bg={categoryId === null ? '$accentSoft' : '$color2'} borderWidth={1} borderColor={categoryId === null ? '$borderStrong' : '$borderColor'} onPress={() => setCategoryId(null)}>
                   All
                 </Button>
                 {(categories ?? []).map((category) => (
                   <Button
                     key={category._id}
                     size="$3"
-                    bg={categoryId === category._id ? '$accentSoft' : '$bgSurface'}
+                    bg={categoryId === category._id ? '$accentSoft' : '$color2'}
                     borderWidth={1}
-                    borderColor={categoryId === category._id ? '$borderStrong' : '$borderSubtle'}
+                    borderColor={categoryId === category._id ? '$borderStrong' : '$borderColor'}
                     onPress={() => setCategoryId(category._id)}
                   >
                     {category.name}
@@ -493,7 +499,7 @@ export function PosScreen() {
                         <YStack gap="$1">
                           <Paragraph color="$color10" fontSize="$2">{group.productCode} · {group.variants.length} variant{group.variants.length > 1 ? 's' : ''}</Paragraph>
                           <XStack justify="space-between" items="center">
-                            <Paragraph color="$textFaint" fontSize="$1">{formatNumber(group.totalOnHand)} available</Paragraph>
+                            <Paragraph color="$color8" fontSize="$1">{formatNumber(group.totalOnHand)} available</Paragraph>
                             <StatusBadge status={group.stockState} />
                           </XStack>
                         </YStack>
@@ -501,9 +507,9 @@ export function PosScreen() {
                       trailing={
                         <Button
                           theme={isOos ? undefined : 'accent'}
-                          bg={isOos ? '$bgElevated' : undefined}
+                          bg={isOos ? '$color3' : undefined}
                           borderWidth={isOos ? 1 : 0}
-                          borderColor="$borderSubtle"
+                          borderColor="$borderColor"
                           disabled={isOos}
                           onPress={() => {
                             if (isOos) return
@@ -525,7 +531,7 @@ export function PosScreen() {
             )}
 
             {status === 'CanLoadMore' ? (
-              <XStack justify="center"><Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" onPress={() => loadMore(24)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">Load more</Paragraph></Button></XStack>
+              <XStack justify="center"><Button bg="$color3" borderWidth={1} borderColor="$borderColor" onPress={() => loadMore(24)}><Paragraph color="$color12" fontSize="$2" fontWeight="700">Load more</Paragraph></Button></XStack>
             ) : null}
           </YStack>
         ) : (
@@ -602,7 +608,7 @@ export function PosScreen() {
                 })}
               </XStack>
             </YStack>
-            <YStack width={430} position="sticky" style={{ top: 92 } as any}>
+            <YStack width={430} style={Platform.OS === 'web' ? { position: 'sticky' as import('react-native').FlexStyle['position'], top: 92 } : undefined}>
               {checkoutTerminal}
             </YStack>
           </XStack>
@@ -617,7 +623,7 @@ export function PosScreen() {
           icon={<ShoppingCart size={18} />}
           onPress={() => setCartOpen(true)}
           style={{
-            position: Platform.OS === 'web' ? 'fixed' as any : 'absolute',
+            position: Platform.OS === 'web' ? 'fixed' : 'absolute',
             right: 16,
             bottom: Platform.OS === 'web' ? 92 : mobileFabBottom,
             zIndex: 40,
@@ -641,8 +647,8 @@ export function PosScreen() {
             <SectionCard key={item._id} p="$3">
               <XStack justify="space-between" items="center" gap="$3">
                 <YStack flex={1} gap="$0.5">
-                  <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$3" fontWeight="800">{item.optionSummary || item.label}</Paragraph>
-                  <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">{item.displayCode} · {formatCurrency(item.salePrice)} · {formatNumber(item.onHand)} avail</Paragraph>
+                  <Paragraph color="$color12" fontSize="$3" fontWeight="800">{item.optionSummary || item.label}</Paragraph>
+                  <Paragraph color="$color10" fontSize="$2">{item.displayCode} · {formatCurrency(item.salePrice)} · {formatNumber(item.onHand)} avail</Paragraph>
                 </YStack>
                 <Button theme={item.stockState === 'out_of_stock' ? undefined : 'accent'} disabled={item.stockState === 'out_of_stock'} onPress={() => { addVariantToCart(item); setVariantPickerOpen(false) }}>
                   {item.stockState === 'out_of_stock' ? 'OOS' : 'Add'}
@@ -657,24 +663,44 @@ export function PosScreen() {
         <YStack gap="$4" py="$2">
           <XStack justify="space-between" items="center" flexWrap="wrap" gap="$4">
             <YStack flex={1} gap="$3" style={{ minWidth: 220 }}>
-              <SectionCard bg="$bgElevated">
-                <Paragraph color={desktop ? '$color7' : '$color10'} fontSize="$2">Amount payable</Paragraph>
-                <Paragraph color="$accentStrong" fontSize="$8" fontWeight="900">{formatCurrency(preview?.summary.total ?? 0)}</Paragraph>
-                {customerName ? <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Customer: {customerName}</Paragraph> : null}
+              <SectionCard bg="$color3">
+                <Paragraph color="$color10" fontSize="$2">Amount payable</Paragraph>
+                <Paragraph color="$color12" fontSize="$8" fontWeight="900">{formatCurrency(completedSale ? completedSale.total : (preview?.summary.total ?? 0))}</Paragraph>
+                {customerName ? <Paragraph color="$color10" fontSize="$2">Customer: {customerName}</Paragraph> : null}
               </SectionCard>
-              <SectionCard bg="$bgElevated">
-                <Paragraph color={upiTimer <= 60 ? '$danger' : desktop ? '$color12' : '$color12'} fontSize="$6" fontWeight="900">
+              <SectionCard bg="$color3">
+                <Paragraph color={upiTimer <= 60 ? '$danger' : '$color12'} fontSize="$6" fontWeight="900">
                   {Math.floor(upiTimer / 60)}:{(upiTimer % 60).toString().padStart(2, '0')}
                 </Paragraph>
-                <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">Expires in</Paragraph>
+                <Paragraph color="$color10" fontSize="$2">Expires in</Paragraph>
               </SectionCard>
             </YStack>
-            <YStack items="center" justify="center" p="$3" bg="#fff" rounded="$6">
-              <QRCode value={`upi://pay?pa=yourmerchant@ybl&pn=Hari%20Charnamm&am=${(preview?.summary.total ?? 0).toFixed(2)}&tr=POS-WEB&cu=INR`} size={180} color="#000000" backgroundColor="#FFFFFF" />
+            <YStack items="center" justify="center" p="$3" bg="white" rounded="$6">
+              <QRCode
+                value={generateUpiUrl({
+                  amount: completedSale ? completedSale.total.toString() : (preview?.summary.total ?? 0).toString(),
+                  transactionNote: completedSale ? completedSale.code : 'POS-WEB',
+                })}
+                size={180}
+                color="#000000"
+                backgroundColor="#FFFFFF"
+              />
             </YStack>
           </XStack>
-          <Button theme="accent" size="$5" disabled={upiTimer <= 0 || isSubmitting} onPress={executeCheckout}>
-            {isSubmitting ? 'Processing…' : 'Confirm Payment Received'}
+          <Button
+            theme="accent"
+            size="$5"
+            disabled={upiTimer <= 0 || isSubmitting}
+            onPress={() => {
+              setShowUpiDialog(false)
+              setPaymentMethod('cash')
+              if (completedSale) {
+                router.replace(`/sales?saleId=${completedSale.id}` as import('expo-router').Href)
+                setCompletedSale(null)
+              }
+            }}
+          >
+            Confirm Payment Received
           </Button>
         </YStack>
       </ResponsiveDialog>

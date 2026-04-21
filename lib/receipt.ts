@@ -6,7 +6,7 @@ import { formatCurrency, formatDateTime, paymentMethodLabel } from './format'
 type ReceiptSale = {
   saleCode: string
   createdAt: number
-  paymentMethod: 'cash' | 'upi_mock'
+  paymentMethod: 'cash' | 'upi'
   customerName?: string | null
   customerPhone?: string | null
   subtotal: number
@@ -26,7 +26,7 @@ export function saleDetailToReceipt(
   sale: {
     saleCode: string
     createdAt: number
-    paymentMethod: 'cash' | 'upi_mock'
+    paymentMethod: 'cash' | 'upi'
     customerName?: string | null
     customerPhone?: string | null
     subtotal: number

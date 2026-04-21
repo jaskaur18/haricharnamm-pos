@@ -5,7 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 export const STORE_TIME_ZONE = "Asia/Kolkata";
 
 export type ProductStatus = "active" | "archived";
-export type PaymentMethod = "cash" | "upi_mock";
+export type PaymentMethod = "cash" | "upi";
 export type SaleStatus = "completed" | "returned_partial" | "returned_full";
 export type ReturnStatus = "completed";
 export type MovementType =
@@ -29,7 +29,7 @@ export const productStatusValidator = v.union(
 );
 export const paymentMethodValidator = v.union(
   v.literal("cash"),
-  v.literal("upi_mock"),
+  v.literal("upi"),
 );
 export const saleStatusValidator = v.union(
   v.literal("completed"),

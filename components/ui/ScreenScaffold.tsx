@@ -1,5 +1,6 @@
-import { Platform } from 'react-native'
+import { Platform, StyleProp, ViewStyle } from 'react-native'
 import { ScrollView, YStack, type YStackProps } from 'tamagui'
+import type { ScrollContentStyle } from 'types/tamagui'
 
 export function ScreenScaffold({
   children,
@@ -11,7 +12,7 @@ export function ScreenScaffold({
   children: React.ReactNode
   scroll?: boolean
   padded?: boolean
-  contentContainerStyle?: any
+  contentContainerStyle?: ScrollContentStyle
 }) {
   if (scroll) {
     return (

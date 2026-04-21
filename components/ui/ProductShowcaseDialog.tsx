@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Image, Modal, Platform, Pressable } from 'react-native'
 import { X } from '@tamagui/lucide-icons-2'
 import { useQuery } from 'convex/react'
-import { Button, Paragraph, ScrollView, Spinner, XStack, YStack, useMedia } from 'tamagui'
+import { Button, Paragraph, ScrollView, Spinner, XStack, YStack, useMedia, useTheme } from 'tamagui'
 import { convexApi } from 'lib/convex'
 import { formatCurrency, formatNumber } from 'lib/format'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
+import type { VariantDetail, VariantAttribute, MediaItem } from 'types/reports'
+import type { WebAwareViewStyle } from 'types/tamagui'
 
 // Conditional import — react-dom doesn't exist on native
 let createPortal: ((children: React.ReactNode, container: Element) => React.ReactPortal) | null = null
@@ -18,26 +20,29 @@ if (Platform.OS === 'web') {
  * Uses z-index 100000 to sit above Tamagui Dialog portals on web.
  */
 function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | null; onClose: () => void }) {
+  const theme = useTheme()
   if (!visible || !url) return null
+
+  const closeButtonBg = theme.color5?.val as string || 'rgba(255,255,255,0.15)'
 
   const overlay = (
     <Pressable
       onPress={onClose}
       style={{
-        ...(Platform.OS === 'web' ? { position: 'fixed' as any } : {}),
+        ...(Platform.OS === 'web' ? { position: 'fixed' as WebAwareViewStyle['position'] } : {}),
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.95)',
+        backgroundColor: theme.overlayDark?.val as string,
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 2147483647,
         elevation: 2147483647,
       }}
     >
-      <Image source={{ uri: url }} style={{ width: '90%', height: '85%', borderRadius: 12 } as any} resizeMode="contain" />
+      <Image source={{ uri: url }} style={{ width: '90%' as unknown as number, height: '85%' as unknown as number, borderRadius: 12 }} resizeMode="contain" />
       <Pressable
         onPress={onClose}
         style={{
@@ -47,7 +52,7 @@ function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | n
           width: 44,
           height: 44,
           borderRadius: 22,
-          backgroundColor: 'rgba(255,255,255,0.15)',
+          backgroundColor: closeButtonBg,
           zIndex: 2147483647,
           justifyContent: 'center',
           alignItems: 'center',
@@ -71,6 +76,15 @@ function Lightbox({ visible, url, onClose }: { visible: boolean; url: string | n
   )
 }
 
+type ProductDetails = {
+  name: string
+  productCode: string
+  description?: string
+  brandCopy?: string
+  merchandisingTags?: string[]
+  variants: VariantDetail[]
+}
+
 /**
  * Customer-facing product showcase — read-only, no uploads.
  * Used in both POS and Inventory to display full product details.
@@ -87,8 +101,14 @@ export function ProductShowcaseDialog({
 }) {
   const media = useMedia()
   const desktop = !media.maxMd
-  const details = useQuery(convexApi.pos.catalogProductDetails, productId ? { productId } : 'skip' as any) as any
-  const gallery = useQuery(convexApi.pos.productMediaGallery, productId ? { productId } : 'skip' as any) as any[] | undefined
+  const details = useQuery(
+    convexApi.pos.catalogProductDetails,
+    productId ? { productId: productId as any } : 'skip'
+  ) as ProductDetails | undefined
+  const gallery = useQuery(
+    convexApi.pos.productMediaGallery,
+    productId ? { productId: productId as any } : 'skip'
+  ) as MediaItem[] | undefined
   const [activeUrl, setActiveUrl] = useState<string | null>(null)
   const [lightboxOpen, setLightboxOpen] = useState(false)
 
@@ -111,7 +131,8 @@ export function ProductShowcaseDialog({
             <XStack gap="$5" flexWrap="wrap">
               {/* Main Image — clickable for lightbox */}
               <YStack
-                style={{ width: desktop ? 300 : '100%', aspectRatio: 1 } as any}
+                width={desktop ? 300 : '100%'}
+                aspectRatio={1}
                 bg="$color2"
                 rounded="$6"
                 overflow="hidden"
@@ -124,7 +145,7 @@ export function ProductShowcaseDialog({
                 {activeUrl ? (
                   <Image
                     source={{ uri: activeUrl }}
-                    style={{ width: '100%', height: '100%', borderRadius: 16 }}
+                    style={{ width: '100%' as unknown as number, height: '100%' as unknown as number, borderRadius: 16 }}
                     resizeMode="cover"
                   />
                 ) : (
@@ -143,7 +164,7 @@ export function ProductShowcaseDialog({
                 </YStack>
 
                 {/* Tags */}
-                {details.merchandisingTags?.length > 0 ? (
+                {details.merchandisingTags && details.merchandisingTags.length > 0 ? (
                   <XStack flexWrap="wrap" gap="$1.5">
                     {details.merchandisingTags.map((tag: string) => (
                       <YStack key={tag} bg="$color3" px="$2.5" py="$1" rounded="$10">
@@ -179,7 +200,7 @@ export function ProductShowcaseDialog({
                   {details.variants.length} Variant{details.variants.length > 1 ? 's' : ''} Available
                 </Paragraph>
                 <YStack gap="$1.5">
-                  {details.variants.map((v: any, i: number) => (
+                  {details.variants.map((v: VariantDetail, i: number) => (
                     <XStack
                       key={i}
                       bg="$color3"
@@ -197,7 +218,7 @@ export function ProductShowcaseDialog({
                         {v.displayCode ? <Paragraph color="$color8" fontSize={10}>{v.displayCode}</Paragraph> : null}
                         {v.attributes?.length > 0 ? (
                           <XStack gap="$1.5" flexWrap="wrap" mt="$0.5">
-                            {v.attributes.map((a: any, j: number) => (
+                            {v.attributes.map((a: VariantAttribute, j: number) => (
                               <Paragraph key={j} color="$color8" fontSize={10}>
                                 {a.name}: <Paragraph color="$color10" fontSize={10} fontWeight="600">{a.value}</Paragraph>
                               </Paragraph>
@@ -228,7 +249,7 @@ export function ProductShowcaseDialog({
                 <Paragraph fontSize="$2" fontWeight="700" color="$color9">Gallery ({gallery.length})</Paragraph>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   <XStack gap="$2">
-                    {gallery.map((m: any) => (
+                    {gallery.map((m: MediaItem) => (
                       <YStack
                         key={m._id}
                         onPress={() => setActiveUrl(m.url)}

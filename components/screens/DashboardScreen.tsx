@@ -54,9 +54,12 @@ const presetLabels: Record<DatePreset, string> = {
 }
 
 export function DashboardScreen() {
-  const router = useRouter()
   const media = useMedia()
+  const desktop = !media.maxMd
   const mobile = media.maxMd
+  const router = useRouter()
+  const wPayment = desktop ? 320 : '100%'
+  const wInsight = desktop ? 320 : '100%'
   const [datePreset, setDatePreset] = useState<DatePreset>('today')
   const { fromDate, toDate } = getDateRange(datePreset)
 
@@ -69,7 +72,7 @@ export function DashboardScreen() {
     variantId: null,
     paymentMethod: 'all',
     returnStatus: 'all',
-  }) as any
+  })
 
   const metrics = dashboard?.metrics
   const suggestions = dashboard?.suggestions
@@ -81,7 +84,7 @@ export function DashboardScreen() {
   }).format(new Date())
 
   const cashAmt = metrics?.paymentMix.cash ?? 0
-  const upiAmt = metrics?.paymentMix.upi_mock ?? 0
+  const upiAmt = metrics?.paymentMix.upi ?? 0
   const mixTotal = cashAmt + upiAmt
   const cashPct = mixTotal > 0 ? (cashAmt / mixTotal) * 100 : 50
 
@@ -111,7 +114,7 @@ export function DashboardScreen() {
                   </Button>
                 ))}
               </XStack>
-              <HeaderAction theme="accent" icon={<ShoppingCart size={14} />} onPress={() => router.replace('/pos' as any)}>
+              <HeaderAction theme="accent" icon={<ShoppingCart size={14} />} onPress={() => router.replace('/pos')}>
                 New Sale
               </HeaderAction>
             </>
@@ -138,14 +141,17 @@ export function DashboardScreen() {
       ) : null}
 
       {mobile ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 } as any}>
+        <>
+          {/* @ts-expect-error Tamagui ScrollView contentContainerStyle type mapping bug */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 20 }}>
           <XStack gap="$3">
             <StatTile label="Revenue" value={metrics ? formatCurrency(metrics.revenue) : '—'} detail="Net of returns" tone="accent" />
             <StatTile label="Orders" value={metrics ? formatNumber(metrics.orderCount) : '—'} detail="Receipts" tone="info" />
             <StatTile label="Units" value={metrics ? formatNumber(metrics.unitsSold) : '—'} detail="Items sold" tone="warning" />
             <StatTile label="Avg Order" value={metrics ? formatCurrency(metrics.avgOrderValue) : '—'} detail="Per receipt" tone="success" />
           </XStack>
-        </ScrollView>
+          </ScrollView>
+        </>
       ) : (
         <XStack gap="$3" flexWrap="wrap">
           <StatTile label="Revenue" value={metrics ? formatCurrency(metrics.revenue) : '—'} detail="Net of returns" tone="accent" />
@@ -156,13 +162,13 @@ export function DashboardScreen() {
       )}
 
       <XStack gap="$3" flexWrap="wrap">
-        <SectionCard flex={mobile ? undefined : 1} style={{ minWidth: mobile ? '100%' as any : 340 }}>
+        <SectionCard flex={mobile ? undefined : 1} minW={wPayment}>
           <XStack justify="space-between" items="center">
             <YStack gap="$0.5">
               <Paragraph color="$color12" fontSize="$5" fontWeight="800">Payment Mix</Paragraph>
               <Paragraph color="$color10" fontSize="$2">{presetLabels[datePreset]} breakdown</Paragraph>
             </YStack>
-            <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" hoverStyle={{ bg: '$color4' }} onPress={() => router.replace('/sales' as any)}>
+            <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" hoverStyle={{ bg: '$color4' }} onPress={() => router.replace('/sales')}>
               <Paragraph color="$color12" fontSize="$2" fontWeight="700">Sales</Paragraph>
             </Button>
           </XStack>
@@ -187,7 +193,7 @@ export function DashboardScreen() {
           </YStack>
         </SectionCard>
 
-        <SectionCard flex={mobile ? undefined : 1} style={{ minWidth: mobile ? '100%' as any : 340 }}>
+        <SectionCard flex={mobile ? undefined : 1} minW={wPayment}>
           <Paragraph color="$color12" fontSize="$5" fontWeight="800">Quick Actions</Paragraph>
           <YStack gap="$2">
             {[
@@ -206,7 +212,7 @@ export function DashboardScreen() {
                 rounded="$5"
                 size="$4"
                 hoverStyle={{ bg: '$color4' }}
-                onPress={() => router.replace(action.href as any)}
+                onPress={() => router.replace(action.href as import('expo-router').Href)}
               >
                 <Paragraph color="$color12" fontSize="$3" fontWeight="700">{action.label}</Paragraph>
               </Button>
@@ -220,13 +226,13 @@ export function DashboardScreen() {
           Active Insights
         </Paragraph>
         <XStack gap="$3" flexWrap="wrap">
-          <YStack flex={1} gap="$3" style={{ minWidth: mobile ? '100%' as any : 0 }}>
-            <SuggestionCard icon={AlertTriangle} title="Low Stock" rows={suggestions?.lowStockSoon} emptyLabel="No low-stock items." accentColor="#f3d46d" />
-            <SuggestionCard icon={Clock} title="Slow Moving" rows={suggestions?.slowMoving} emptyLabel="No slow movers." accentColor="#d3b5ff" />
+          <YStack flex={1} gap="$3" minW={wInsight}>
+            <SuggestionCard icon={AlertTriangle} title="Low Stock" rows={suggestions?.lowStockSoon} emptyLabel="No low-stock items." tone="warning" />
+            <SuggestionCard icon={Clock} title="Slow Moving" rows={suggestions?.slowMoving} emptyLabel="No slow movers." tone="purple" />
           </YStack>
-          <YStack flex={1} gap="$3" style={{ minWidth: mobile ? '100%' as any : 0 }}>
-            <SuggestionCard icon={TrendingUp} title="Trending Up" rows={suggestions?.trendingUp} emptyLabel="No trends detected." accentColor="#61d694" />
-            <SuggestionCard icon={RotateCcw} title="Recent Returns" rows={suggestions?.recentReturns} emptyLabel="No recent returns." accentColor="#ef8c82" />
+          <YStack flex={1} gap="$3" minW={wInsight}>
+            <SuggestionCard icon={TrendingUp} title="Trending Up" rows={suggestions?.trendingUp} emptyLabel="No trends detected." tone="success" />
+            <SuggestionCard icon={RotateCcw} title="Recent Returns" rows={suggestions?.recentReturns} emptyLabel="No recent returns." tone="danger" />
           </YStack>
         </XStack>
       </YStack>

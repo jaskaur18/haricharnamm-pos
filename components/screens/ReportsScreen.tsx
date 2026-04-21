@@ -14,7 +14,10 @@ import {
   TrendingUp,
 } from '@tamagui/lucide-icons-2'
 import { Button, Input, Paragraph, ScrollView, Spinner, XStack, YStack, useMedia } from 'tamagui'
+import type { ColorTokens } from 'tamagui'
+import type { DimensionValue } from 'react-native'
 import { convexApi } from 'lib/convex'
+import { Id } from 'convex/_generated/dataModel'
 import { CategoryNode, getSubcategoryOptions } from 'lib/categories'
 import { getErrorMessage } from 'lib/errors'
 import { exportTextFile } from 'lib/files'
@@ -174,7 +177,7 @@ function MetricTile({
             {detail}
           </Paragraph>
         ) : null}
-        <YStack height={4} rounded="$10" bg={accent as any} opacity={0.8} />
+        <YStack height={4} rounded="$10" bg={accent as ColorTokens} opacity={0.8} />
       </YStack>
     </SectionCard>
   )
@@ -269,7 +272,7 @@ function TrendBars({
                 </Paragraph>
               </XStack>
               <YStack bg="$color3" rounded="$10" height={8} overflow="hidden">
-                <YStack width={`${(((row[valueKey] ?? 0) / maxValue) * 100).toFixed(0)}%` as any} bg="$accentBackground" height="100%" />
+                <YStack width={`${(((row[valueKey] ?? 0) / maxValue) * 100).toFixed(0)}%` as DimensionValue} bg="$accentBackground" height="100%" />
               </YStack>
             </YStack>
           ))}
@@ -428,11 +431,11 @@ export function ReportsScreen() {
   const [subcategoryId, setSubcategoryId] = useState<string | null>(singleParam(params.subcategoryId) || null)
   const [productId, setProductId] = useState<string | null>(singleParam(params.productId) || null)
   const [variantId, setVariantId] = useState<string | null>(singleParam(params.variantId) || null)
-  const [paymentMethod, setPaymentMethod] = useState<'all' | 'cash' | 'upi_mock'>((singleParam(params.payment) as any) || 'all')
-  const [salesStatus, setSalesStatus] = useState<'all' | 'completed' | 'returned_partial' | 'returned_full'>((singleParam(params.salesStatus) as any) || 'all')
-  const [returnStatus, setReturnStatus] = useState<'all' | 'completed'>((singleParam(params.returnStatus) as any) || 'all')
-  const [stockState, setStockState] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>((singleParam(params.stockState) as any) || 'all')
-  const [movementBucket, setMovementBucket] = useState<'all' | 'top_sellers' | 'slow_movers' | 'dead_stock' | 'high_returns' | 'discount_heavy'>((singleParam(params.movement) as any) || 'all')
+  const [paymentMethod, setPaymentMethod] = useState<'all' | 'cash' | 'upi'>((singleParam(params.payment) || 'all') as typeof paymentMethod)
+  const [salesStatus, setSalesStatus] = useState<'all' | 'completed' | 'returned_partial' | 'returned_full'>((singleParam(params.salesStatus) || 'all') as typeof salesStatus)
+  const [returnStatus, setReturnStatus] = useState<'all' | 'completed'>((singleParam(params.returnStatus) || 'all') as typeof returnStatus)
+  const [stockState, setStockState] = useState<'all' | 'in_stock' | 'low_stock' | 'out_of_stock'>((singleParam(params.stockState) || 'all') as typeof stockState)
+  const [movementBucket, setMovementBucket] = useState<'all' | 'top_sellers' | 'slow_movers' | 'dead_stock' | 'high_returns' | 'discount_heavy'>((singleParam(params.movement) || 'all') as typeof movementBucket)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [exportScope, setExportScope] = useState<ExportScope>((singleParam(params.exportScope) as ExportScope) || 'summary_and_detail')
@@ -441,10 +444,10 @@ export function ReportsScreen() {
 
   const variantPool = usePaginatedQuery(
     convexApi.inventory.list,
-    { search: null, categoryId: categoryId as any, subcategoryId: subcategoryId as any, status: 'active', stockState: 'all' },
+    { search: null, categoryId: categoryId as Id<'categories'> | null, subcategoryId: subcategoryId as Id<'categories'> | null, status: 'active', stockState: 'all' },
     { initialNumItems: 120 },
   )
-  const variantOptions = (variantPool.results ?? []) as any[]
+  const variantOptions = (variantPool.results ?? []) as Array<{ _id: string; productId: string; productName: string; productCode: string; displayCode: string; label: string }>
   const productOptions = Array.from(
     new Map(
       variantOptions.map((variant: any) => [
@@ -481,12 +484,12 @@ export function ReportsScreen() {
     setSubcategoryId(singleParam(params.subcategoryId) || null)
     setProductId(singleParam(params.productId) || null)
     setVariantId(singleParam(params.variantId) || null)
-    setPaymentMethod((singleParam(params.payment) as any) || 'all')
-    setSalesStatus((singleParam(params.salesStatus) as any) || 'all')
-    setReturnStatus((singleParam(params.returnStatus) as any) || 'all')
-    setStockState((singleParam(params.stockState) as any) || 'all')
-    setMovementBucket((singleParam(params.movement) as any) || 'all')
-    setExportScope((singleParam(params.exportScope) as ExportScope) || 'summary_and_detail')
+    setPaymentMethod((singleParam(params.payment) || 'all') as typeof paymentMethod)
+    setSalesStatus((singleParam(params.salesStatus) || 'all') as typeof salesStatus)
+    setReturnStatus((singleParam(params.returnStatus) || 'all') as typeof returnStatus)
+    setStockState((singleParam(params.stockState) || 'all') as typeof stockState)
+    setMovementBucket((singleParam(params.movement) || 'all') as typeof movementBucket)
+    setExportScope((singleParam(params.exportScope) || 'summary_and_detail') as typeof exportScope)
   }, [
     desktop,
     params.categoryId,
@@ -511,10 +514,10 @@ export function ReportsScreen() {
     toDate: datePreset === 'custom' ? toDate || null : null,
     datePreset,
     compareMode,
-    categoryId: categoryId as any,
-    subcategoryId: subcategoryId as any,
-    productId: productId as any,
-    variantId: variantId as any,
+    categoryId: categoryId as Id<'categories'> | null,
+    subcategoryId: subcategoryId as Id<'categories'> | null,
+    productId: productId as Id<'products'> | null,
+    variantId: variantId as Id<'productVariants'> | null,
     paymentMethod,
     returnStatus,
     stockState,
@@ -524,14 +527,14 @@ export function ReportsScreen() {
     sortBy: null,
   }
 
-  const overview = useQuery(convexApi.reports.overview, filters) as any
-  const salesAnalysis = useQuery(convexApi.reports.salesAnalysis, filters) as any
-  const productPerformance = useQuery(convexApi.reports.productPerformance, filters) as any
-  const inventoryHealth = useQuery(convexApi.reports.inventoryHealth, filters) as any
+  const overview = useQuery(convexApi.reports.overview, filters)
+  const salesAnalysis = useQuery(convexApi.reports.salesAnalysis, filters)
+  const productPerformance = useQuery(convexApi.reports.productPerformance, filters)
+  const inventoryHealth = useQuery(convexApi.reports.inventoryHealth, filters)
   const returnsReport = useQuery(convexApi.reports.returnsReport, {
     ...filters,
     paginationOpts: { numItems: returnsPageSize, cursor: null },
-  }) as any
+  })
 
   const filterCount = [
     datePreset !== 'last_30_days',
@@ -587,7 +590,7 @@ export function ReportsScreen() {
       payment: paymentMethod,
       status: salesStatus,
       ...extra,
-    }) as any)
+    }) as import('expo-router').Href)
   }
 
   function applyReportFocus(next: Partial<{
@@ -688,16 +691,16 @@ export function ReportsScreen() {
           <SelectionField label="Variant" value={variantId} placeholder="All" options={[{ label: 'All', value: null }, ...filteredVariantOptions]} onChange={setVariantId} />
         </YStack>
         <YStack style={{ minWidth: desktop ? 150 : '48%' }}>
-          <SelectionField label="Payment" value={paymentMethod} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi_mock' }]} onChange={(value) => setPaymentMethod((value as any) ?? 'all')} />
+          <SelectionField label="Payment" value={paymentMethod} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi' }]} onChange={(value) => setPaymentMethod((value ?? 'all') as typeof paymentMethod)} />
         </YStack>
         <YStack style={{ minWidth: desktop ? 150 : '48%' }}>
-          <SelectionField label="Sales Status" value={salesStatus} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Completed', value: 'completed' }, { label: 'Partial Return', value: 'returned_partial' }, { label: 'Full Return', value: 'returned_full' }]} onChange={(value) => setSalesStatus((value as any) ?? 'all')} />
+          <SelectionField label="Sales Status" value={salesStatus} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Completed', value: 'completed' }, { label: 'Partial Return', value: 'returned_partial' }, { label: 'Full Return', value: 'returned_full' }]} onChange={(value) => setSalesStatus((value ?? 'all') as typeof salesStatus)} />
         </YStack>
         <YStack style={{ minWidth: desktop ? 150 : '48%' }}>
-          <SelectionField label="Stock State" value={stockState} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'In Stock', value: 'in_stock' }, { label: 'Low Stock', value: 'low_stock' }, { label: 'Out Of Stock', value: 'out_of_stock' }]} onChange={(value) => setStockState((value as any) ?? 'all')} />
+          <SelectionField label="Stock State" value={stockState} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'In Stock', value: 'in_stock' }, { label: 'Low Stock', value: 'low_stock' }, { label: 'Out Of Stock', value: 'out_of_stock' }]} onChange={(value) => setStockState((value ?? 'all') as typeof stockState)} />
         </YStack>
         <YStack style={{ minWidth: desktop ? 160 : '48%' }}>
-          <SelectionField label="Movement Bucket" value={movementBucket} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Top Sellers', value: 'top_sellers' }, { label: 'Slow Movers', value: 'slow_movers' }, { label: 'Dead Stock', value: 'dead_stock' }, { label: 'High Returns', value: 'high_returns' }, { label: 'Discount Heavy', value: 'discount_heavy' }]} onChange={(value) => setMovementBucket((value as any) ?? 'all')} />
+          <SelectionField label="Movement Bucket" value={movementBucket} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Top Sellers', value: 'top_sellers' }, { label: 'Slow Movers', value: 'slow_movers' }, { label: 'Dead Stock', value: 'dead_stock' }, { label: 'High Returns', value: 'high_returns' }, { label: 'Discount Heavy', value: 'discount_heavy' }]} onChange={(value) => setMovementBucket((value ?? 'all') as typeof movementBucket)} />
         </YStack>
       </XStack>
     </SurfaceCard>
@@ -726,7 +729,7 @@ export function ReportsScreen() {
           </XStack>
           <YStack gap="$2">
             <ValuePill label="Cash Revenue" value={formatCurrency(overview?.paymentMix?.cash ?? 0)} />
-            <ValuePill label="UPI Revenue" value={formatCurrency(overview?.paymentMix?.upi_mock ?? 0)} />
+            <ValuePill label="UPI Revenue" value={formatCurrency(overview?.paymentMix?.upi ?? 0)} />
             <ValuePill label="Line Discount" value={formatCurrency(overview?.discountMix?.lineDiscount ?? 0)} />
             <ValuePill label="Order Discount" value={formatCurrency(overview?.discountMix?.orderDiscount ?? 0)} />
           </YStack>
@@ -813,7 +816,7 @@ export function ReportsScreen() {
             <ValuePill label="Named Customers" value={formatNumber(salesAnalysis?.customerMix?.named ?? 0)} />
             <ValuePill label="Walk-in" value={formatNumber(salesAnalysis?.customerMix?.walkIn ?? 0)} />
             <ValuePill label="Cash" value={formatCurrency(salesAnalysis?.paymentMix?.cash ?? 0)} />
-            <ValuePill label="UPI" value={formatCurrency(salesAnalysis?.paymentMix?.upi_mock ?? 0)} />
+            <ValuePill label="UPI" value={formatCurrency(salesAnalysis?.paymentMix?.upi ?? 0)} />
           </YStack>
         </SurfaceCard>
         <InsightList
@@ -992,7 +995,7 @@ export function ReportsScreen() {
           { key: 'onHand', label: 'On Hand', width: 90, sortValue: (row) => row.onHand, render: (row) => <Paragraph color="$color12" fontSize="$2" fontWeight="700">{formatNumber(row.onHand)}</Paragraph> },
           { key: 'reorderThreshold', label: 'Reorder', width: 90, sortValue: (row) => row.reorderThreshold, render: (row) => <Paragraph color="$color10" fontSize="$2">{formatNumber(row.reorderThreshold)}</Paragraph> },
           { key: 'daysSinceSale', label: 'Last Sale', width: 90, sortValue: (row) => row.daysSinceSale ?? 9999, render: (row) => <Paragraph color="$color10" fontSize="$2">{row.daysSinceSale == null ? 'Never' : `${row.daysSinceSale}d`}</Paragraph> },
-          { key: 'stockValue', label: 'Value', width: 100, sortValue: (row) => row.stockValue ?? 0, render: (row) => <Paragraph color="$color12" fontSize="$2" fontWeight="700">{formatCurrency(row.stockValue ?? 0)}</Paragraph> },
+
         ]}
       />
       <XStack gap="$3" flexWrap="wrap">
@@ -1036,7 +1039,7 @@ export function ReportsScreen() {
           <Paragraph color="$color12" fontSize="$4" fontWeight="800">Refund Mix</Paragraph>
           <YStack gap="$2">
             <ValuePill label="Cash Refunds" value={formatCurrency(returnsReport?.refundMethodMix?.cash ?? 0)} />
-            <ValuePill label="UPI Refunds" value={formatCurrency(returnsReport?.refundMethodMix?.upi_mock ?? 0)} />
+            <ValuePill label="UPI Refunds" value={formatCurrency(returnsReport?.refundMethodMix?.upi ?? 0)} />
           </YStack>
         </SurfaceCard>
       </XStack>
@@ -1210,7 +1213,7 @@ export function ReportsScreen() {
 
       {desktop ? (
         <XStack gap="$4" items="flex-start">
-          <YStack width={310} position="sticky" style={{ top: 92 } as any}>
+          <YStack width={310} position="sticky" style={{ top: 92 } as DimensionValue | any}>
             {filterPanel}
           </YStack>
           <YStack flex={1} gap="$3">

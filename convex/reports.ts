@@ -26,7 +26,7 @@ type ReportFilters = {
   subcategoryId: Id<"categories"> | null;
   productId: Id<"products"> | null;
   variantId: Id<"productVariants"> | null;
-  paymentMethod: "all" | "cash" | "upi_mock";
+  paymentMethod: "all" | "cash" | "upi";
   returnStatus: "all" | "completed";
   datePreset?: DatePreset;
   compareMode?: boolean;
@@ -71,7 +71,7 @@ const reportFilterArgs = {
   paymentMethod: v.union(
     v.literal("all"),
     v.literal("cash"),
-    v.literal("upi_mock"),
+    v.literal("upi"),
   ),
   returnStatus: v.union(v.literal("all"), v.literal("completed")),
   datePreset: v.optional(
@@ -599,7 +599,7 @@ async function computeOverviewMetrics(
       avgOrderValue: orderCount > 0 ? normalizeMoney(grossRevenue / orderCount) : 0,
       paymentMix: {
         cash: cashRevenue,
-        upi_mock: upiRevenue,
+        upi: upiRevenue,
       },
     };
   }
@@ -629,9 +629,9 @@ async function computeOverviewMetrics(
           .filter((item) => item.paymentMethod === "cash")
           .reduce((sum, item) => sum + item.lineTotal, 0),
       ),
-      upi_mock: normalizeMoney(
+      upi: normalizeMoney(
         saleItems
-          .filter((item) => item.paymentMethod === "upi_mock")
+          .filter((item) => item.paymentMethod === "upi")
           .reduce((sum, item) => sum + item.lineTotal, 0),
       ),
     },
@@ -821,7 +821,7 @@ export const overview = query({
           orderCount: 0,
           unitsSold: 0,
           avgOrderValue: 0,
-          paymentMix: { cash: 0, upi_mock: 0 },
+          paymentMix: { cash: 0, upi: 0 },
         };
     const snapshot = await ctx.db
       .query("reportSnapshots")
@@ -990,7 +990,7 @@ export const salesSummaryStats = query({
   args: {
     fromDate: nullableStringValidator,
     toDate: nullableStringValidator,
-    paymentMethod: v.union(v.literal("all"), v.literal("cash"), v.literal("upi_mock")),
+    paymentMethod: v.union(v.literal("all"), v.literal("cash"), v.literal("upi")),
     status: v.union(v.literal("all"), v.literal("completed"), v.literal("returned_partial"), v.literal("returned_full")),
   },
   handler: async (ctx, args) => {
@@ -1052,7 +1052,7 @@ export const salesAnalysis = query({
     const trendMap = new Map<string, { date: string; revenue: number; receipts: number; discounts: number; returns: number }>();
     const weekdayMap = new Map<string, { label: string; revenue: number; receipts: number }>();
     const hourlyMap = new Map<number, { hour: number; revenue: number; receipts: number }>();
-    const paymentMix = { cash: 0, upi_mock: 0 };
+    const paymentMix = { cash: 0, upi: 0 };
     let namedCustomers = 0;
     let walkInCustomers = 0;
 
@@ -1463,7 +1463,7 @@ export const returnsReport = query({
         acc[ret.refundMethod] = normalizeMoney(acc[ret.refundMethod] + ret.subtotal);
         return acc;
       },
-      { cash: 0, upi_mock: 0 },
+      { cash: 0, upi: 0 },
     );
     const previousSummary = resolvedFilters.compareMode
       ? await ctx.runQuery(publicApi.reports.returnsReport, {
@@ -1579,7 +1579,7 @@ export const exportCsv = action({
         ["Units Sold", r.summary.current.unitsSold],
         ["Avg Order Value", r.summary.current.avgOrderValue],
         ["Cash Revenue", r.paymentMix.cash],
-        ["UPI Revenue", r.paymentMix.upi_mock],
+        ["UPI Revenue", r.paymentMix.upi],
       ];
       if (scope !== "current_view") {
         rows.push([]);

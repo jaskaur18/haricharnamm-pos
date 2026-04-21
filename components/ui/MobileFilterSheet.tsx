@@ -26,12 +26,12 @@ export function MobileFilterSheet({
               <SlidersHorizontal size={16} color="$accent" />
             </YStack>
             <YStack gap="$0.25">
-              <Paragraph color="$textPrimary" fontSize="$4" fontWeight="800">{title}</Paragraph>
-              <Paragraph color="$textMuted" fontSize="$2">{activeCount} active filter{activeCount === 1 ? '' : 's'}</Paragraph>
+              <Paragraph color="$color12" fontSize="$4" fontWeight="800">{title}</Paragraph>
+              <Paragraph color="$color10" fontSize="$2">{activeCount} active filter{activeCount === 1 ? '' : 's'}</Paragraph>
             </YStack>
           </XStack>
           {onReset ? (
-            <Button size="$2.5" bg="$bgElevated" borderColor="$borderSubtle" borderWidth={1} onPress={onReset}>
+            <Button size="$2.5" bg="$color3" borderColor="$borderColor" borderWidth={1} onPress={onReset}>
               Reset
             </Button>
           ) : null}

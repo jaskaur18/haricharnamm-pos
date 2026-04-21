@@ -6,6 +6,7 @@ import { useToastController } from '@tamagui/toast'
 import { Calendar, Filter, MessageSquare, RotateCcw, X } from '@tamagui/lucide-icons-2'
 import { Button, Input, Paragraph, ScrollView, Spinner, TextArea, XStack, YStack, useMedia } from 'tamagui'
 import { convexApi } from 'lib/convex'
+import { Id } from 'convex/_generated/dataModel'
 import { getErrorMessage } from 'lib/errors'
 import { formatCurrency, formatDateTime, formatNumber, makeBusinessDateKey, paymentMethodLabel } from 'lib/format'
 import { hapticHeavy, hapticLight, hapticMedium, hapticSuccess } from 'lib/haptics'
@@ -18,21 +19,22 @@ import { ScreenScaffold } from 'components/ui/ScreenScaffold'
 import { SelectionField } from 'components/ui/SelectionField'
 import { StatusBadge } from 'components/ui/StatusBadge'
 import { SurfaceCard } from 'components/ui/SurfaceCard'
+import type { WebAwareViewStyle } from 'types/tamagui'
 
 type SaleListItem = {
   _id: string; saleCode: string; businessDate: string; status: 'completed' | 'returned_partial' | 'returned_full'
-  paymentMethod: 'cash' | 'upi_mock'; customerName?: string | null; customerPhone?: string | null
+  paymentMethod: 'cash' | 'upi'; customerName?: string | null; customerPhone?: string | null
   total: number; totalQty: number; itemCount: number; createdAt: number
   lineDiscountTotal?: number; orderDiscount?: number; notes?: string | null
 }
 
 type SaleDetail = {
   _id: string; saleCode: string; businessDate: string; status: 'completed' | 'returned_partial' | 'returned_full'
-  paymentMethod: 'cash' | 'upi_mock'; paymentNote?: string | null; customerName?: string | null; customerPhone?: string | null
+  paymentMethod: 'cash' | 'upi'; paymentNote?: string | null; customerName?: string | null; customerPhone?: string | null
   subtotal: number; lineDiscountTotal: number; orderDiscount: number; total: number; totalQty: number; itemCount: number
   notes?: string | null; createdAt: number
   items: Array<{ _id: string; productName: string; variantLabel: string; productCode: string; quantity: number; returnedQuantity: number; remainingQty: number; unitPrice: number; lineTotal: number; lineDiscount: number; mediaUrl?: string | null }>
-  returns: Array<{ _id: string; returnCode: string; refundMethod: 'cash' | 'upi_mock'; refundNote?: string | null; subtotal: number; totalQty: number; createdAt: number; items: Array<{ quantity: number; refundAmount: number; productName: string; variantLabel: string }> }>
+  returns: Array<{ _id: string; returnCode: string; refundMethod: 'cash' | 'upi'; refundNote?: string | null; subtotal: number; totalQty: number; createdAt: number; items: Array<{ quantity: number; refundAmount: number; productName: string; variantLabel: string }> }>
 }
 
 type DatePreset = 'today' | 'yesterday' | '7d' | '30d' | 'custom'
@@ -64,10 +66,10 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
   const toast = useToastController()
   const convex = useConvex()
   const createReturn = useMutation(convexApi.pos.createReturn)
-  const sale = useQuery(convexApi.pos.saleDetail, saleId ? { saleId: saleId as any } : 'skip') as SaleDetail | undefined
+  const sale = useQuery(convexApi.pos.saleDetail, saleId ? { saleId: saleId as Id<'sales'> } : 'skip') as SaleDetail | undefined
   const [returnOpen, setReturnOpen] = useState(false)
   const [quantities, setQuantities] = useState<Record<string, string>>({})
-  const [refundMethod, setRefundMethod] = useState<'cash' | 'upi_mock'>('cash')
+  const [refundMethod, setRefundMethod] = useState<'cash' | 'upi'>('cash')
   const [refundNote, setRefundNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -90,7 +92,7 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
     if (items.length === 0) { toast.show('Select quantities'); return }
     setIsSubmitting(true)
     try {
-      const r = await createReturn({ saleId: sale._id as any, items: items.map(i => ({ ...i, saleItemId: i.saleItemId as any })), refundMethod, refundNote: refundNote.trim() || null })
+      const r = await createReturn({ saleId: sale._id as Id<'sales'>, items: items.map(i => ({ ...i, saleItemId: i.saleItemId as Id<'saleItems'> })), refundMethod, refundNote: refundNote.trim() || null })
       hapticHeavy()
       toast.show('Return recorded', { message: `${r.returnCode} updated.` })
       setReturnOpen(false)
@@ -119,7 +121,7 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
               <Paragraph fontSize="$6" fontWeight="800">{sale.saleCode}</Paragraph>
               <StatusBadge status={sale.status} />
             </XStack>
-            <Paragraph color={desktop ? '$color10' : '$color8'} fontSize="$2">{formatDateTime(sale.createdAt)} · {paymentMethodLabel(sale.paymentMethod)}</Paragraph>
+            <Paragraph color="$color10" fontSize="$2">{formatDateTime(sale.createdAt)} · {paymentMethodLabel(sale.paymentMethod)}</Paragraph>
           </YStack>
         </XStack>
         <XStack gap="$3" flexWrap="wrap">
@@ -205,7 +207,7 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
               <XStack key={r._id} gap="$3">
                 <YStack items="center" pt="$2">
                   <YStack width={8} height={8} rounded="$10" bg="$red10" />
-                  {i !== sale.returns.length - 1 && <YStack flex={1} width={2} bg="$color3" mt="$2" style={{ minHeight: 40 } as any} />}
+                  {i !== sale.returns.length - 1 && <YStack flex={1} width={2} bg="$color3" mt="$2" style={{ minHeight: 40 }} />}
                 </YStack>
                 <YStack flex={1} bg="$color3" rounded="$4" p="$3" gap="$2">
                   <XStack justify="space-between" items="center">
@@ -248,7 +250,7 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
               <Input value={quantities[item._id] ?? '0'} onChangeText={(v) => setQuantities((c) => ({ ...c, [item._id]: v }))} keyboardType="numeric" style={{ width: 60 }} size="$3" bg="$color2" borderWidth={1} borderColor="$borderColor" px="$4" />
             </XStack>
           ))}
-          <SelectionField label="Refund method" value={refundMethod} placeholder="Select" options={[{ label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi_mock' }]} onChange={(v) => setRefundMethod((v as any) ?? 'cash')} />
+          <SelectionField label="Refund method" value={refundMethod} placeholder="Select" options={[{ label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi' }]} onChange={(v) => setRefundMethod((v ?? 'cash') as typeof refundMethod)} />
           <FormField label="Note"><TextArea value={refundNote} onChangeText={setRefundNote} placeholder="Optional" style={{ minHeight: 80 }} px="$4" py="$3" bg="$color2" borderWidth={1} borderColor="$borderColor" /></FormField>
           <XStack justify="flex-end"><Button theme="accent" onPress={handleReturn} disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Complete return'}</Button></XStack>
         </YStack>
@@ -276,8 +278,8 @@ export function SalesScreen() {
   const [datePreset, setDatePreset] = useState<DatePreset>((singleParam(params.preset) as DatePreset) || '30d')
   const [fromDate, setFromDate] = useState(singleParam(params.from) || '')
   const [toDate, setToDate] = useState(singleParam(params.to) || '')
-  const [paymentMethod, setPaymentMethod] = useState<'all' | 'cash' | 'upi_mock'>((singleParam(params.payment) as any) || 'all')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'returned_partial' | 'returned_full'>((singleParam(params.status) as any) || 'all')
+  const [paymentMethod, setPaymentMethod] = useState<'all' | 'cash' | 'upi'>((singleParam(params.payment) || 'all') as 'all' | 'cash' | 'upi')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'returned_partial' | 'returned_full'>((singleParam(params.status) || 'all') as 'all' | 'completed' | 'returned_partial' | 'returned_full')
   const [sortBy, setSortBy] = useState<SortOption>((singleParam(params.sort) as SortOption) || 'date_desc')
   const [insightPreset, setInsightPreset] = useState<SalesInsightPreset>((singleParam(params.insight) as SalesInsightPreset) || 'all')
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(singleParam(params.saleId) || null)
@@ -290,8 +292,8 @@ export function SalesScreen() {
     setDatePreset((singleParam(params.preset) as DatePreset) || '30d')
     setFromDate(singleParam(params.from) || '')
     setToDate(singleParam(params.to) || '')
-    setPaymentMethod((singleParam(params.payment) as any) || 'all')
-    setStatusFilter((singleParam(params.status) as any) || 'all')
+    setPaymentMethod((singleParam(params.payment) || 'all') as typeof paymentMethod)
+    setStatusFilter((singleParam(params.status) || 'all') as typeof statusFilter)
     setSortBy((singleParam(params.sort) as SortOption) || 'date_desc')
     setInsightPreset((singleParam(params.insight) as SalesInsightPreset) || 'all')
   }, [params.from, params.insight, params.payment, params.preset, params.saleId, params.search, params.sort, params.status, params.to])
@@ -303,7 +305,7 @@ export function SalesScreen() {
   // Summary stats
   const stats = useQuery(convexApi.reports.salesSummaryStats, {
     fromDate: activeFromDate, toDate: activeToDate, paymentMethod, status: statusFilter,
-  }) as any
+  }) as { totalRevenue: number; totalReturns: number; netRevenue: number; avgOrderValue: number; saleCount: number } | undefined
 
   const { useDebounce } = require('lib/useDebounce')
   const debouncedSearch = useDebounce(search, 300)
@@ -345,7 +347,7 @@ export function SalesScreen() {
       return
     }
     if (insightPreset === 'upi_only') {
-      setPaymentMethod('upi_mock')
+      setPaymentMethod('upi')
     }
   }, [insightPreset])
 
@@ -366,7 +368,7 @@ export function SalesScreen() {
       acc[sale.paymentMethod] += sale.total
       return acc
     },
-    { cash: 0, upi_mock: 0 },
+    { cash: 0, upi: 0 },
   )
 
   return (
@@ -384,18 +386,18 @@ export function SalesScreen() {
       {/* Summary Stats */}
       {desktop ? (
         <XStack gap="$2.5" flexWrap="wrap">
-          <MetricCard label="Revenue" value={stats ? formatCurrency(stats.totalRevenue) : '—'} detail="Gross" accentColor="#E8A230" />
-          <MetricCard label="Returns" value={stats ? formatCurrency(stats.totalReturns) : '—'} detail="Refunded" accentColor="#FCA5A5" />
-          <MetricCard label="Net" value={stats ? formatCurrency(stats.netRevenue) : '—'} detail="After returns" accentColor="#34D399" />
-          <MetricCard label="Avg Order" value={stats ? formatCurrency(stats.avgOrderValue) : '—'} detail={stats ? `${formatNumber(stats.saleCount)} sales` : '—'} accentColor="#60A5FA" />
+          <MetricCard label="Revenue" value={stats ? formatCurrency(stats.totalRevenue) : '—'} detail="Gross" tone="accent" />
+          <MetricCard label="Returns" value={stats ? formatCurrency(stats.totalReturns) : '—'} detail="Refunded" tone="danger" />
+          <MetricCard label="Net" value={stats ? formatCurrency(stats.netRevenue) : '—'} detail="After returns" tone="success" />
+          <MetricCard label="Avg Order" value={stats ? formatCurrency(stats.avgOrderValue) : '—'} detail={stats ? `${formatNumber(stats.saleCount)} sales` : '—'} tone="info" />
         </XStack>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 32 } as any}>
           <XStack gap="$2.5">
-            <YStack style={{ minWidth: 140 }}><MetricCard label="Revenue" value={stats ? formatCurrency(stats.totalRevenue) : '—'} detail="Gross" accentColor="#E8A230" /></YStack>
-            <YStack style={{ minWidth: 140 }}><MetricCard label="Returns" value={stats ? formatCurrency(stats.totalReturns) : '—'} detail="Refunded" accentColor="#FCA5A5" /></YStack>
-            <YStack style={{ minWidth: 140 }}><MetricCard label="Net" value={stats ? formatCurrency(stats.netRevenue) : '—'} detail="After returns" accentColor="#34D399" /></YStack>
-            <YStack style={{ minWidth: 140 }}><MetricCard label="Avg Order" value={stats ? formatCurrency(stats.avgOrderValue) : '—'} detail={stats ? `${formatNumber(stats.saleCount)} sales` : '—'} accentColor="#60A5FA" /></YStack>
+            <YStack style={{ minWidth: 140 }}><MetricCard label="Revenue" value={stats ? formatCurrency(stats.totalRevenue) : '—'} detail="Gross" tone="accent" /></YStack>
+            <YStack style={{ minWidth: 140 }}><MetricCard label="Returns" value={stats ? formatCurrency(stats.totalReturns) : '—'} detail="Refunded" tone="danger" /></YStack>
+            <YStack style={{ minWidth: 140 }}><MetricCard label="Net" value={stats ? formatCurrency(stats.netRevenue) : '—'} detail="After returns" tone="success" /></YStack>
+            <YStack style={{ minWidth: 140 }}><MetricCard label="Avg Order" value={stats ? formatCurrency(stats.avgOrderValue) : '—'} detail={stats ? `${formatNumber(stats.saleCount)} sales` : '—'} tone="info" /></YStack>
           </XStack>
         </ScrollView>
       )}
@@ -475,10 +477,10 @@ export function SalesScreen() {
             <FormField label="Search"><Input value={search} onChangeText={setSearch} placeholder="Code, customer, phone…" size="$3" px="$4" bg="$color3" color="$color12" borderWidth={1} borderColor="$borderColor" /></FormField>
           </YStack>
           <YStack style={{ minWidth: desktop ? 130 : '30%', flex: desktop ? undefined : 1 }}>
-            <SelectionField label="Payment" value={paymentMethod} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi_mock' }]} onChange={(v) => setPaymentMethod((v as any) ?? 'all')} />
+            <SelectionField label="Payment" value={paymentMethod} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi' }]} onChange={(v) => setPaymentMethod((v ?? 'all') as typeof paymentMethod)} />
           </YStack>
           <YStack style={{ minWidth: desktop ? 130 : '30%', flex: desktop ? undefined : 1 }}>
-            <SelectionField label="Status" value={statusFilter} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Completed', value: 'completed' }, { label: 'Partial Return', value: 'returned_partial' }, { label: 'Full Return', value: 'returned_full' }]} onChange={(v) => setStatusFilter((v as any) ?? 'all')} />
+            <SelectionField label="Status" value={statusFilter} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Completed', value: 'completed' }, { label: 'Partial Return', value: 'returned_partial' }, { label: 'Full Return', value: 'returned_full' }]} onChange={(v) => setStatusFilter((v ?? 'all') as typeof statusFilter)} />
           </YStack>
           <YStack style={{ minWidth: desktop ? 120 : '30%', flex: desktop ? undefined : 1 }}>
             <SelectionField label="Sort" value={sortBy} placeholder="Newest" options={Object.entries(sortLabels).map(([v, l]) => ({ label: l, value: v }))} onChange={(v) => setSortBy((v as SortOption) ?? 'date_desc')} />
@@ -491,7 +493,7 @@ export function SalesScreen() {
           <SurfaceCard flex={1} gap="$2.5" style={{ minWidth: 280 }}>
             <XStack justify="space-between" items="center">
               <Paragraph color="$color12" fontSize="$4" fontWeight="800">Top Transactions</Paragraph>
-              <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" onPress={() => router.replace('/reports?tab=sales' as any)}>
+              <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" onPress={() => router.replace('/reports?tab=sales')}>
                 <Paragraph color="$color12" fontSize="$2" fontWeight="700">Reports</Paragraph>
               </Button>
             </XStack>
@@ -527,7 +529,7 @@ export function SalesScreen() {
             <Paragraph color="$color12" fontSize="$4" fontWeight="800">Payment Split</Paragraph>
             <YStack gap="$2">
               <XStack justify="space-between"><Paragraph color="$color10" fontSize="$2">Cash</Paragraph><Paragraph color="$color12" fontWeight="700">{formatCurrency(paymentMix.cash)}</Paragraph></XStack>
-              <XStack justify="space-between"><Paragraph color="$color10" fontSize="$2">UPI</Paragraph><Paragraph color="$color12" fontWeight="700">{formatCurrency(paymentMix.upi_mock)}</Paragraph></XStack>
+              <XStack justify="space-between"><Paragraph color="$color10" fontSize="$2">UPI</Paragraph><Paragraph color="$color12" fontWeight="700">{formatCurrency(paymentMix.upi)}</Paragraph></XStack>
             </YStack>
           </SurfaceCard>
         </XStack>
@@ -537,7 +539,7 @@ export function SalesScreen() {
       {desktop ? (
         <XStack gap="$3" flexWrap="nowrap" items="flex-start">
           {/* Sale list */}
-          <YStack flex={1} style={{ minWidth: 300 } as any}>
+          <YStack flex={1} style={{ minWidth: 300 } as WebAwareViewStyle}>
             <YStack gap="$1.5">
               {status === 'LoadingFirstPage' ? (
                 <XStack items="center" gap="$2" py="$4" justify="center"><Spinner size="small" /><Paragraph color="$color10">Loading…</Paragraph></XStack>
@@ -550,10 +552,10 @@ export function SalesScreen() {
                 const sel = selectedSaleId === sale._id
                 const hasDiscount = (sale.lineDiscountTotal ?? 0) > 0 || (sale.orderDiscount ?? 0) > 0
                 return (
-                  <XStack key={sale._id} onPress={() => setSelectedSaleId(sale._id)} bg={sel ? '$color4' : '$color2'} borderWidth={1} borderColor={sel ? '$accentBackground' : '$borderColor'} rounded="$4" p="$2.5" gap="$3" items="center" hoverStyle={{ bg: sel ? '$color5' : '$color3' }} pressStyle={{ scale: 0.99 }} cursor="pointer" style={{ position: 'relative', overflow: 'hidden' } as any}>
-                    {sel ? <YStack bg="$accentBackground" style={{ position: 'absolute' as any, left: 0, top: 0, bottom: 0, width: 4 }} /> : null}
+                  <XStack key={sale._id} onPress={() => setSelectedSaleId(sale._id)} bg={sel ? '$color4' : '$color2'} borderWidth={1} borderColor={sel ? '$accentBackground' : '$borderColor'} rounded="$4" p="$2.5" gap="$3" items="center" hoverStyle={{ bg: sel ? '$color5' : '$color3' }} pressStyle={{ scale: 0.99 }} cursor="pointer" style={{ position: 'relative', overflow: 'hidden' } as WebAwareViewStyle}>
+                    {sel ? <YStack bg="$accentBackground" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 } as WebAwareViewStyle} /> : null}
                     {/* Return indicator stripe */}
-                    {sale.status !== 'completed' ? <YStack bg="$red10" style={{ position: 'absolute' as any, right: 0, top: 0, bottom: 0, width: 3, opacity: 0.6 }} /> : null}
+                    {sale.status !== 'completed' ? <YStack bg="$red10" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 3, opacity: 0.6 } as WebAwareViewStyle} /> : null}
                     <YStack flex={1} gap="$0.5">
                       <XStack gap="$1.5" items="center">
                         <Paragraph fontWeight="700" fontSize="$2" color={sel ? '$color12' : '$color11'}>{sale.saleCode}</Paragraph>
@@ -580,7 +582,7 @@ export function SalesScreen() {
           </YStack>
 
           {/* Detail */}
-          <YStack flex={1} style={{ minWidth: 380, position: 'sticky', top: 92 } as any}>
+          <YStack flex={1} style={{ minWidth: 380, position: 'sticky', top: 92 } as WebAwareViewStyle}>
             <SaleDetailPanel saleId={selectedSaleId} />
           </YStack>
         </XStack>
@@ -597,8 +599,8 @@ export function SalesScreen() {
           ) : sorted.map((sale) => {
             const hasDiscount = (sale.lineDiscountTotal ?? 0) > 0 || (sale.orderDiscount ?? 0) > 0
             return (
-              <XStack key={sale._id} onPress={() => { hapticMedium(); setSelectedSaleId(sale._id) }} bg="$color2" borderWidth={1} borderColor="$borderColor" rounded="$4" p="$3" gap="$3" items="center" pressStyle={{ bg: '$color4', scale: 0.98 }} style={{ position: 'relative', overflow: 'hidden' } as any}>
-                {sale.status !== 'completed' ? <YStack bg="$red10" style={{ position: 'absolute' as any, left: 0, top: 0, bottom: 0, width: 4, opacity: 0.8 }} /> : null}
+              <XStack key={sale._id} onPress={() => { hapticMedium(); setSelectedSaleId(sale._id) }} bg="$color2" borderWidth={1} borderColor="$borderColor" rounded="$4" p="$3" gap="$3" items="center" pressStyle={{ bg: '$color4', scale: 0.98 }} style={{ position: 'relative', overflow: 'hidden' } as WebAwareViewStyle}>
+                {sale.status !== 'completed' ? <YStack bg="$red10" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, opacity: 0.8 } as WebAwareViewStyle} /> : null}
                 <YStack flex={1} gap="$1">
                   <XStack gap="$2" items="center">
                     <Paragraph fontWeight="800" fontSize="$4" color="$color12">{sale.saleCode}</Paragraph>

@@ -56,16 +56,23 @@ export function InventoryScreen() {
     const create = Array.isArray(params.create) ? params.create[0] : params.create
     const openAt = Array.isArray(params.openAt) ? params.openAt[0] : params.openAt
     if (create !== 'product' || !openAt) return
-    if ((categories ?? []).length === 0) return
+    if (categories === undefined) return
+    
+    if (categories.length === 0) {
+      toast.show('Create categories first', { message: 'Go to Settings.' })
+      router.replace('/inventory')
+      return
+    }
+
     setEditingProductId(null)
     setEditorOpen(true)
-    router.replace('/inventory' as any)
+    router.replace('/inventory')
   }, [params.create, params.openAt, categories, router])
 
   const debouncedSearch = useDebounce(search, 300)
   const { results, status: pageStatus, loadMore } = usePaginatedQuery(
     convexApi.inventory.list,
-    { search: debouncedSearch.trim() || null, categoryId: categoryId as any, subcategoryId: subcategoryId as any, status, stockState },
+    { search: debouncedSearch.trim() || null, categoryId: categoryId as import('convex/_generated/dataModel').Id<'categories'> | null, subcategoryId: subcategoryId as import('convex/_generated/dataModel').Id<'categories'> | null, status, stockState },
     { initialNumItems: 24 },
   )
   const items = (results ?? []) as InventoryItem[]
@@ -95,14 +102,14 @@ export function InventoryScreen() {
     <XStack
       items="center"
       gap="$2"
-      bg={desktop ? '$color3' : '$bgSurface'}
+      bg="$color3"
       borderWidth={1}
-      borderColor={desktop ? '$borderColor' : '$borderSubtle'}
+      borderColor="$borderColor"
       rounded="$6"
       px="$3"
       py="$1"
     >
-      <Search size={16} color={desktop ? '$color8' : '$color10'} />
+      <Search size={16} color="$color8" />
       <Input
         value={search}
         onChangeText={setSearch}
@@ -112,14 +119,14 @@ export function InventoryScreen() {
         borderWidth={0}
         py="$2"
         px="$0"
-        color={desktop ? '$color12' : '$color12'}
+        color="$color12"
       />
       {mobile ? (
         <Button
           size="$2.5"
-          bg="$bgElevated"
+          bg="$color3"
           borderWidth={1}
-          borderColor="$borderSubtle"
+          borderColor="$borderColor"
           icon={<SlidersHorizontal size={14} />}
           onPress={() => setFiltersOpen(true)}
         >
@@ -131,17 +138,17 @@ export function InventoryScreen() {
 
   const filterFields = (
     <>
-      <YStack style={{ minWidth: mobile ? '100%' as any : 180 }}>
+      <YStack style={{ minWidth: mobile ? '100%' : 180 }}>
         <SelectionField label="Category" value={categoryId} placeholder="All categories" options={[{ label: 'All categories', value: null }, ...(categories ?? []).map((c) => ({ label: c.name, value: c._id }))]} onChange={setCategoryId} />
       </YStack>
-      <YStack style={{ minWidth: mobile ? '100%' as any : 180 }}>
+      <YStack style={{ minWidth: mobile ? '100%' : 180 }}>
         <SelectionField label="Subcategory" value={subcategoryId} placeholder="All subcategories" options={[{ label: 'All subcategories', value: null }, ...getSubcategoryOptions(categories, categoryId)]} onChange={setSubcategoryId} />
       </YStack>
-      <YStack style={{ minWidth: mobile ? '100%' as any : 160 }}>
-        <SelectionField label="Status" value={status} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Active', value: 'active' }, { label: 'Archived', value: 'archived' }]} onChange={(v) => setStatus((v as any) ?? 'all')} />
+      <YStack style={{ minWidth: mobile ? '100%' : 160 }}>
+        <SelectionField label="Status" value={status} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Active', value: 'active' }, { label: 'Archived', value: 'archived' }]} onChange={(v) => setStatus((v ?? 'all') as typeof status)} />
       </YStack>
-      <YStack style={{ minWidth: mobile ? '100%' as any : 160 }}>
-        <SelectionField label="Stock" value={stockState} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'In stock', value: 'in_stock' }, { label: 'Low stock', value: 'low_stock' }, { label: 'Out of stock', value: 'out_of_stock' }]} onChange={(v) => setStockState((v as any) ?? 'all')} />
+      <YStack style={{ minWidth: mobile ? '100%' : 160 }}>
+        <SelectionField label="Stock" value={stockState} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'In stock', value: 'in_stock' }, { label: 'Low stock', value: 'low_stock' }, { label: 'Out of stock', value: 'out_of_stock' }]} onChange={(v) => setStockState((v ?? 'all') as typeof stockState)} />
       </YStack>
     </>
   )
@@ -175,15 +182,18 @@ export function InventoryScreen() {
             {formatNumber(items.length)} items
           </Button>
           {categoryId ? (
-            <Button size="$2.5" bg="$bgSurface" borderWidth={1} borderColor="$borderSubtle" onPress={() => setCategoryId(null)}>
+            <Button size="$2.5" bg="$color2" borderWidth={1} borderColor="$borderColor" onPress={() => setCategoryId(null)}>
               Category active
             </Button>
           ) : null}
           {stockState !== 'all' ? (
-            <Button size="$2.5" bg="$bgSurface" borderWidth={1} borderColor="$borderSubtle" onPress={() => setStockState('all')}>
+            <Button size="$2.5" bg="$color2" borderWidth={1} borderColor="$borderColor" onPress={() => setStockState('all')}>
               {stockState.replaceAll('_', ' ')}
             </Button>
           ) : null}
+          <Button size="$2.5" theme="accent" borderWidth={1} borderColor="$accentBackground" icon={<PackagePlus size={14} />} onPress={openCreate}>
+            Add Product
+          </Button>
         </XStack>
       ) : (
         <SectionCard>
@@ -192,7 +202,7 @@ export function InventoryScreen() {
               {filterFields}
             </XStack>
             <YStack gap="$1" items="flex-end">
-              <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2">{formatNumber(items.length)} visible items</Paragraph>
+              <Paragraph color="$color10" fontSize="$2">{formatNumber(items.length)} visible items</Paragraph>
               {activeFilterCount > 0 ? (
                 <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" hoverStyle={{ bg: '$color4' }} onPress={resetFilters}>
                   Reset filters
@@ -218,14 +228,14 @@ export function InventoryScreen() {
               onPress={() => setShowcaseProductId(item.productId)}
               leading={<ProductImage uri={item.mediaUrl} size={52} label={item.productCode} />}
               title={item.productName}
-              meta={<Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800">{formatCurrency(item.salePrice)}</Paragraph>}
+              meta={<Paragraph color="$color12" fontSize="$4" fontWeight="800">{formatCurrency(item.salePrice)}</Paragraph>}
               subtitle={
                 <YStack gap="$1">
-                  <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2" numberOfLines={1}>
+                  <Paragraph color="$color10" fontSize="$2" numberOfLines={1}>
                     {item.displayCode} · {item.optionSummary || item.label}
                   </Paragraph>
                   <XStack justify="space-between" items="center" gap="$2">
-                    <Paragraph color={desktop ? '$color8' : '$color8'} fontSize="$1">
+                    <Paragraph color="$color8" fontSize="$1">
                       {formatNumber(item.onHand)} on hand · reorder {formatNumber(item.reorderThreshold)}
                     </Paragraph>
                     <StatusBadge status={item.stockState} />
@@ -234,7 +244,7 @@ export function InventoryScreen() {
               }
               trailing={
                 <XStack gap="$1.5">
-                  <Button size="$2.5" bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} hoverStyle={desktop ? { bg: '$color4' } : undefined} icon={Pencil} onPress={() => { setEditingProductId(item.productId); setEditorOpen(true) }}>
+                  <Button size="$2.5" bg="$color3" borderWidth={1} borderColor="$borderColor" hoverStyle={{ bg: '$color4' }} icon={Pencil} onPress={() => { setEditingProductId(item.productId); setEditorOpen(true) }}>
                     Edit
                   </Button>
                   <Button size="$2.5" theme="accent" icon={<Warehouse size={14} />} onPress={() => { setAdjustItem(item); setAdjustOpen(true) }}>
@@ -252,17 +262,17 @@ export function InventoryScreen() {
               <XStack gap="$3" items="center">
                 <ProductImage uri={item.mediaUrl} size={60} label={item.productCode} />
                 <YStack flex={1} gap="$1">
-                  <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$4" fontWeight="800" numberOfLines={1}>{item.productName}</Paragraph>
-                  <Paragraph color={desktop ? '$color10' : '$color10'} fontSize="$2" numberOfLines={1}>{item.displayCode} · {item.optionSummary || item.label}</Paragraph>
+                  <Paragraph color="$color12" fontSize="$4" fontWeight="800" numberOfLines={1}>{item.productName}</Paragraph>
+                  <Paragraph color="$color10" fontSize="$2" numberOfLines={1}>{item.displayCode} · {item.optionSummary || item.label}</Paragraph>
                 </YStack>
               </XStack>
               <XStack justify="space-between" items="center">
-                <Paragraph color={desktop ? '$color12' : '$color12'} fontSize="$6" fontWeight="900">{formatCurrency(item.salePrice)}</Paragraph>
+                <Paragraph color="$color12" fontSize="$6" fontWeight="900">{formatCurrency(item.salePrice)}</Paragraph>
                 <StatusBadge status={item.stockState} />
               </XStack>
-              <Paragraph color={desktop ? '$color8' : '$color8'} fontSize="$2">{formatNumber(item.onHand)} on hand · reorder {formatNumber(item.reorderThreshold)}</Paragraph>
+              <Paragraph color="$color8" fontSize="$2">{formatNumber(item.onHand)} on hand · reorder {formatNumber(item.reorderThreshold)}</Paragraph>
               <XStack gap="$2">
-                <Button flex={1} bg={desktop ? '$color3' : '$bgElevated'} borderWidth={1} borderColor={desktop ? '$borderColor' : '$borderSubtle'} hoverStyle={desktop ? { bg: '$color4' } : undefined} icon={Pencil} onPress={() => { setEditingProductId(item.productId); setEditorOpen(true) }}>
+                <Button flex={1} bg="$color3" borderWidth={1} borderColor="$borderColor" hoverStyle={{ bg: '$color4' }} icon={Pencil} onPress={() => { setEditingProductId(item.productId); setEditorOpen(true) }}>
                   Edit
                 </Button>
                 <Button flex={1} theme="accent" icon={<Warehouse size={14} />} onPress={() => { setAdjustItem(item); setAdjustOpen(true) }}>
@@ -276,7 +286,7 @@ export function InventoryScreen() {
 
       {pageStatus === 'CanLoadMore' ? (
         <XStack justify="center" py="$2">
-          <Button bg={desktop ? '$color3' : '$bgElevated'} borderColor={desktop ? '$borderColor' : '$borderSubtle'} borderWidth={1} hoverStyle={desktop ? { bg: '$color4' } : undefined} size="$3" onPress={() => loadMore(24)}>
+          <Button bg="$color3" borderColor="$borderColor" borderWidth={1} hoverStyle={{ bg: '$color4' }} size="$3" onPress={() => loadMore(24)}>
             Load more
           </Button>
         </XStack>

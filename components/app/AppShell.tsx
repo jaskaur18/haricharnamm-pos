@@ -16,6 +16,7 @@ import { Button, Paragraph, ScrollView, XStack, YStack, useMedia } from 'tamagui
 import { hapticLight } from 'lib/haptics'
 import { useAuthSession } from 'components/auth/AuthProvider'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
+import type { WebAwareViewStyle } from 'types/tamagui'
 
 const mobileNavItems = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
@@ -92,7 +93,7 @@ function DesktopAppShell({
   const meta = resolveMeta(pathname)
 
   return (
-    <YStack flex={1} bg="$background" theme="dark" style={Platform.OS === 'web' ? { minHeight: '100vh' } as any : undefined}>
+    <YStack flex={1} bg="$background" theme="dark" minH={Platform.OS === 'web' ? '100vh' : undefined}>
       <XStack
         px="$6"
         py="$3"
@@ -100,14 +101,14 @@ function DesktopAppShell({
         items="center"
         borderBottomWidth={1}
         borderColor={scrolled ? '$borderColorHover' : '$borderColor'}
-        bg={scrolled ? 'rgba(5,5,8,0.92)' : 'rgba(5,5,8,0.76)'}
+        bg={scrolled ? '$overlayNav' : '$background'}
         style={{
-          position: 'sticky' as any,
+          position: 'sticky',
           top: 0,
           zIndex: 80,
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
-        } as any}
+        } as WebAwareViewStyle}
       >
         <Pressable onPress={() => onNav('/')}>
           <BrandMark />
@@ -162,7 +163,7 @@ function DesktopAppShell({
         px="$7"
         pt="$5"
         pb="$8"
-        style={{ maxWidth: 1480, width: '100%', marginLeft: 'auto', marginRight: 'auto' } as any}
+        style={{ maxWidth: 1480, width: '100%', marginLeft: 'auto', marginRight: 'auto' } as WebAwareViewStyle}
       >
         {children}
       </YStack>
@@ -203,15 +204,15 @@ function MobileAppShell({
   const mobileUsesShellScroll = pathname !== '/pos'
 
   return (
-    <YStack flex={1} bg="$bgApp" theme="dark" style={isWeb ? { minHeight: '100vh' } as any : undefined}>
+    <YStack flex={1} bg="$background" theme="dark" minH={isWeb ? '100vh' : undefined}>
       <YStack
         pt={insets.top + 8}
         px="$4"
         pb="$3"
         gap="$3"
-        bg="$bgApp"
+        bg="$background"
         borderBottomWidth={1}
-        borderColor="$borderSubtle"
+        borderColor="$borderColor"
       >
         <XStack justify="space-between" items="center">
           <YStack gap="$0.5">
@@ -234,11 +235,11 @@ function MobileAppShell({
         </XStack>
         <Button
           size="$2.5"
-          bg="$bgElevated"
+          bg="$color3"
           borderWidth={1}
-          borderColor="$borderSubtle"
+          borderColor="$borderColor"
           onPress={onLogout}
-          style={{ alignSelf: 'flex-start' } as any}
+          style={{ alignSelf: 'flex-start' }}
         >
           Sign Out
         </Button>
@@ -249,11 +250,10 @@ function MobileAppShell({
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
-              paddingHorizontal: 12,
-              paddingTop: 12,
-              paddingBottom: insets.bottom + 86,
-              flexGrow: 1,
-            } as any}
+              px: 12,
+              pt: 12,
+              pb: insets.bottom + 86,
+            }}
             showsVerticalScrollIndicator={false}
           >
             <YStack gap="$4">{children}</YStack>
@@ -264,24 +264,38 @@ function MobileAppShell({
       </YStack>
 
       <XStack
-        bg={isWeb ? 'rgba(23,20,17,0.92)' : '$bgSurface'}
-        borderTopWidth={1}
-        borderColor="$borderSubtle"
+        bg="$color1"
+        borderWidth={1}
+        borderColor="$borderStrong"
+        rounded="$10"
         px="$2.5"
-        pt="$2"
-        pb={Math.max(insets.bottom, 10)}
+        py="$2"
         justify="space-between"
         style={isWeb
           ? {
-              position: 'fixed' as any,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backdropFilter: 'blur(18px)',
-              WebkitBackdropFilter: 'blur(18px)',
-              zIndex: 100,
-            } as any
-          : undefined}
+            position: 'fixed',
+            left: 20,
+            right: 20,
+            bottom: Math.max(insets.bottom, 20),
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            zIndex: 100,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 16 },
+            shadowOpacity: 0.6,
+            shadowRadius: 24,
+          } as WebAwareViewStyle
+          : {
+            position: 'absolute',
+            left: 20,
+            right: 20,
+            bottom: Math.max(insets.bottom, 20),
+            zIndex: 100,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 16 },
+            shadowOpacity: 0.6,
+            shadowRadius: 24,
+          } as any}
       >
         {mobileNavItems.map((item) => {
           const active = isItemActive(pathname, item.href)
@@ -292,16 +306,13 @@ function MobileAppShell({
                 <YStack
                   items="center"
                   justify="center"
-                  bg={active ? '$accentSoft' : 'transparent'}
+                  bg={active ? '$color4' : 'transparent'}
                   borderWidth={active ? 1 : 0}
-                  borderColor={active ? '$borderStrong' : 'transparent'}
+                  borderColor={active ? '$color6' : 'transparent'}
                   style={{ width: 48, height: 34, borderRadius: 17 }}
                 >
-                  <Icon color={active ? '$accentStrong' : '$textFaint'} size={18} />
+                  <Icon color={active ? '$color12' : '$color8'} size={20} />
                 </YStack>
-                <Paragraph color={active ? '$color12' : '$textFaint'} fontSize={10} fontWeight={active ? '700' : '600'}>
-                  {item.label}
-                </Paragraph>
               </YStack>
             </Pressable>
           )
@@ -313,10 +324,10 @@ function MobileAppShell({
           <Button theme="accent" size="$4" justify="space-between" icon={<ShoppingCart size={16} />} onPress={() => handleNewAction('sale')}>
             New Sale
           </Button>
-          <Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" size="$4" justify="space-between" icon={<PackagePlus size={16} />} onPress={() => handleNewAction('product')}>
+          <Button bg="$color3" borderWidth={1} borderColor="$borderColor" size="$4" justify="space-between" icon={<PackagePlus size={16} />} onPress={() => handleNewAction('product')}>
             New Product
           </Button>
-          <Button bg="$bgElevated" borderWidth={1} borderColor="$borderSubtle" size="$4" justify="space-between" icon={<Boxes size={16} />} onPress={() => handleNewAction('category')}>
+          <Button bg="$color3" borderWidth={1} borderColor="$borderColor" size="$4" justify="space-between" icon={<Boxes size={16} />} onPress={() => handleNewAction('category')}>
             New Category
           </Button>
         </YStack>
@@ -342,7 +353,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   function handleNav(href: string) {
     hapticLight()
-    router.replace(href as any)
+    router.replace(href as import('expo-router').Href)
   }
 
   return desktop

@@ -264,7 +264,7 @@ export const deleteCategory = mutation({
     // Check if products use this category/subcategory
     const productsUsingCategory = await ctx.db
       .query("products")
-      .withIndex("by_categoryId", (q) => q.eq("categoryId", args.categoryId))
+      .withIndex("by_categoryId_and_status", (q) => q.eq("categoryId", args.categoryId))
       .take(1);
       
     if (productsUsingCategory.length > 0) {
@@ -273,7 +273,7 @@ export const deleteCategory = mutation({
 
     const productsUsingSub = await ctx.db
       .query("products")
-      .withIndex("by_subcategoryId", (q) => q.eq("subcategoryId", args.categoryId))
+      .withIndex("by_subcategoryId_and_status", (q) => q.eq("subcategoryId", args.categoryId))
       .take(1);
 
     if (productsUsingSub.length > 0) {

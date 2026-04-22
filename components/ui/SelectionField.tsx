@@ -50,7 +50,8 @@ export function SelectionField({
     function handleClick(e: MouseEvent) {
       const target = e.target as Node
       if (containerRef.current?.contains(target) || menuRef.current?.contains(target)) return
-      setOpen(false)
+      // Delay unmount to allow React Native Web's global Touch event system to register `onPress`
+      setTimeout(() => setOpen(false), 150)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -141,8 +142,6 @@ export function SelectionField({
           maxHeight: 320,
           overflowY: 'auto',
         } as WebAwareViewStyle}
-        onMouseDown={(e: any) => e.stopPropagation()}
-        onTouchStart={(e: any) => e.stopPropagation()}
       >
         <YStack py="$1">
           {options.map((option) => {

@@ -535,7 +535,7 @@ export function PosScreen() {
             ) : null}
           </YStack>
         ) : (
-          <XStack gap="$4" items="flex-start" flex={1}>
+          <XStack gap="$4" flex={1} items="stretch">
             <ScrollView flex={1} showsVerticalScrollIndicator={false} contentContainerStyle={{ pb: 60 } as any}>
               <YStack gap="$3">
               <XStack items="center" gap="$2" bg="$color3" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">

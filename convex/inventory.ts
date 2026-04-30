@@ -1,5 +1,5 @@
 import { paginationOptsValidator } from "convex/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
@@ -792,5 +792,75 @@ export const adjustStock = mutation({
     return {
       nextOnHand,
     };
+  },
+});
+
+export const deleteProduct = mutation({
+  args: {
+    productId: v.id("products"),
+    force: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const saleItems = await ctx.db
+      .query("saleItems")
+      .withIndex("by_productId_and_businessDate", (q) => q.eq("productId", args.productId))
+      .take(1);
+      
+    if (saleItems.length > 0) {
+      if (!args.force) {
+        throw new ConvexError("Cannot delete product because it has been sold in the past. Archive it instead to preserve sales history.");
+      } else {
+        const allSaleItems = await ctx.db
+          .query("saleItems")
+          .withIndex("by_productId_and_businessDate", (q) => q.eq("productId", args.productId))
+          .collect();
+        for (const item of allSaleItems) {
+          await ctx.db.delete(item._id);
+        }
+      }
+    }
+
+    const variants = await ctx.db
+      .query("productVariants")
+      .withIndex("by_productId", (q) => q.eq("productId", args.productId))
+      .collect();
+
+    for (const variant of variants) {
+      const inventoryLevels = await ctx.db
+        .query("inventoryLevels")
+        .withIndex("by_variantId", (q) => q.eq("variantId", variant._id))
+        .collect();
+      for (const level of inventoryLevels) {
+        await ctx.db.delete(level._id);
+      }
+
+      const movements = await ctx.db
+        .query("stockMovements")
+        .withIndex("by_variantId_and_createdAt", (q) => q.eq("variantId", variant._id))
+        .collect();
+      for (const m of movements) {
+        await ctx.db.delete(m._id);
+      }
+
+      const variantSales = await ctx.db
+        .query("variantDailySales")
+        .withIndex("by_variantId_and_businessDate", (q) => q.eq("variantId", variant._id))
+        .collect();
+      for (const vs of variantSales) {
+        await ctx.db.delete(vs._id);
+      }
+
+      await ctx.db.delete(variant._id);
+    }
+
+    const media = await ctx.db
+      .query("productMedia")
+      .withIndex("by_productId_and_sortOrder", (q) => q.eq("productId", args.productId))
+      .collect();
+    for (const m of media) {
+      await ctx.db.delete(m._id);
+    }
+
+    await ctx.db.delete(args.productId);
   },
 });

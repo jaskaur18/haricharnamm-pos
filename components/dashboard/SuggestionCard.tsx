@@ -1,4 +1,4 @@
-import { Paragraph, Spinner, XStack, YStack } from 'tamagui'
+import { Paragraph, Spinner, Text, XStack, YStack } from 'tamagui'
 import { formatDate, formatNumber } from 'lib/format'
 import { SurfaceCard } from 'components/ui/SurfaceCard'
 import type { SuggestionRow } from 'types/reports'
@@ -7,12 +7,12 @@ import type { ColorTokens } from 'tamagui'
 type Tone = 'accent' | 'success' | 'warning' | 'danger' | 'info' | 'purple'
 
 const toneColors: Record<Tone, { icon: string; badge: string }> = {
-  accent:  { icon: '$accent',  badge: '$accentSoft' },
+  accent: { icon: '$accent', badge: '$accentSoft' },
   success: { icon: '$success', badge: '$successSoft' },
   warning: { icon: '$warning', badge: '$warningSoft' },
-  danger:  { icon: '$danger',  badge: '$dangerSoft' },
-  info:    { icon: '$info',    badge: '$infoSoft' },
-  purple:  { icon: '$purple',  badge: '$purpleSoft' },
+  danger: { icon: '$danger', badge: '$dangerSoft' },
+  info: { icon: '$info', badge: '$infoSoft' },
+  purple: { icon: '$purple', badge: '$purpleSoft' },
 }
 
 export function SuggestionCard({
@@ -98,8 +98,8 @@ export function SuggestionCard({
                 <YStack items="flex-end" style={{ flexShrink: 0 }}>
                   {typeof row.onHand === 'number' ? (
                     <Paragraph color={colors.icon as ColorTokens} fontSize="$3" fontWeight="900" letterSpacing={-0.5}>
-                      {formatNumber(row.onHand)} 
-                      <Paragraph color="$color10" fontSize="$1" fontWeight="600"> pcs</Paragraph>
+                      {formatNumber(row.onHand)}
+                      <Text color="$color10" fontSize="$1" fontWeight="600"> pcs</Text>
                     </Paragraph>
                   ) : null}
                   {typeof row.growthRate === 'number' ? (

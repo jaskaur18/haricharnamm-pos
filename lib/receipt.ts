@@ -73,188 +73,196 @@ export function buildReceiptHtml(sale: ReceiptSale) {
   const rows = sale.items
     .map(
       (item) => `
-        <tr style="border-bottom: 1px dashed #e5e5e5;">
-          <td style="padding: 12px 0;">
-            <div style="font-weight: 600; color: #111;">${item.productName}</div>
-            <div style="font-size: 11px; color: #666; margin-top: 2px;">${item.variantLabel}</div>
+        <tr class="item-row">
+          <td class="item-desc">
+            <div>${item.productName}</div>
+            <div class="item-variant">${item.variantLabel}</div>
           </td>
-          <td style="padding: 12px 0; text-align: center; color: #444; font-size: 13px;">x${item.quantity}</td>
-          <td style="padding: 12px 0; text-align: right; color: #111; font-weight: 500;">${formatCurrency(item.lineTotal)}</td>
+          <td class="item-qty">x${item.quantity}</td>
+          <td class="item-price">${formatCurrency(item.lineTotal)}</td>
         </tr>`,
     )
     .join('')
 
   return `
+    <!DOCTYPE html>
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          @page { margin: 0; }
           body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            padding: 40px 20px;
-            color: #111;
-            background: #f7f7f7;
+            font-family: 'Courier New', Courier, monospace, sans-serif;
+            font-size: 12px;
+            color: #000;
+            background: #fff;
             margin: 0;
-            display: flex;
-            justify-content: center;
+            padding: 10px;
+            text-transform: uppercase;
+            width: 100%;
+            box-sizing: border-box;
           }
           .receipt-container {
             width: 100%;
-            max-width: 420px;
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.06);
-            overflow: hidden;
+            margin: 0 auto;
           }
           .header {
             text-align: center;
-            padding: 32px 24px 24px;
+            margin-bottom: 12px;
           }
           .logo {
-            width: 80px;
-            height: 80px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            margin: 0 auto 16px;
+            margin: 0 auto 8px;
             display: block;
-            object-fit: cover;
-            border: 1px solid #f0f0f0;
+            filter: grayscale(100%);
           }
           .brand-name {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
-            letter-spacing: -0.5px;
-            color: #000;
           }
           .brand-tagline {
-            font-size: 12px;
-            color: #666;
+            font-size: 10px;
+            margin-top: 2px;
+          }
+          .gst-info {
+            font-size: 10px;
             margin-top: 4px;
-            padding: 0 20px;
+            font-weight: bold;
+          }
+          .divider {
+            border-bottom: 1px dashed #000;
+            margin: 10px 0;
           }
           .meta-info {
-            background: #fafafa;
-            border-top: 1px dashed #e5e5e5;
-            border-bottom: 1px dashed #e5e5e5;
-            padding: 16px 24px;
-            margin-top: 24px;
-            font-size: 12px;
-            color: #555;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-          .meta-info strong {
-            color: #111;
-            display: block;
-            margin-bottom: 2px;
-            font-size: 13px;
-          }
-          .body-content {
-            padding: 24px;
+            font-size: 11px;
+            line-height: 1.4;
           }
           .customer-details {
-            font-size: 13px;
-            color: #444;
-            margin-bottom: 24px;
-            padding: 14px;
-            background: #fdfdfd;
-            border: 1px solid #eaeaea;
-            border-radius: 8px;
+            font-size: 11px;
+            margin-top: 10px;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
-            margin-bottom: 24px;
+            font-size: 11px;
+            margin: 10px 0;
           }
           th {
             text-align: left;
-            color: #888;
-            font-weight: 500;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #000;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 4px;
+            font-weight: 700;
+          }
+          .item-row td {
+            padding: 6px 0;
+            vertical-align: top;
+          }
+          .item-desc {
+            width: 50%;
+            padding-right: 5px;
+          }
+          .item-variant {
+            font-size: 10px;
+            margin-top: 2px;
+          }
+          .item-qty {
+            width: 20%;
+            text-align: center;
+          }
+          .item-price {
+            width: 30%;
+            text-align: right;
+            font-weight: 700;
           }
           .totals {
             margin-left: auto;
-            width: 240px;
-            font-size: 13px;
+            width: 100%;
+            font-size: 11px;
           }
           .totals-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            color: #444;
+            padding: 2px 0;
           }
-          .totals-row.grand-total {
-            border-top: 2px solid #111;
-            padding-top: 16px;
-            margin-top: 8px;
-            font-size: 18px;
+          .grand-total {
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+            margin-top: 4px;
+            font-size: 14px;
             font-weight: 700;
-            color: #000;
           }
           .footer {
             text-align: center;
-            padding: 24px;
-            background: #fafafa;
-            color: #888;
             font-size: 11px;
-            border-top: 1px dashed #e5e5e5;
+            margin-top: 16px;
+            line-height: 1.5;
+          }
+          .social {
+            margin-top: 8px;
+            font-size: 11px;
+            font-weight: 700;
+          }
+          .sanskrit {
+            font-family: sans-serif;
+            margin-top: 16px;
           }
         </style>
       </head>
       <body>
         <div class="receipt-container">
           <div class="header">
-            <img class="logo" src="${HARI_CHARNAMM_LOGO_B64}" alt="Hari Charnamm Logo" />
+            <img class="logo" src="${HARI_CHARNAMM_LOGO_B64}" alt="Logo" />
             <div class="brand-name">HARI CHARNAMM</div>
-            <div class="brand-tagline">Unique & Handmade Lord Accessories</div>
+            <div class="brand-tagline">Unique Lord Accessories</div>
+            <div class="gst-info">GSTIN: 09AAACA1234A1Z5</div>
           </div>
           
           <div class="meta-info">
-            <div>
-              <strong>Order ID</strong>
-              ${sale.saleCode}
-            </div>
-            <div style="text-align: right;">
-              <strong>${formatDateTime(sale.createdAt)}</strong>
-              Paid via ${paymentMethodLabel(sale.paymentMethod)}
-            </div>
+            <div>DATE: ${formatDateTime(sale.createdAt)}</div>
+            <div>BILL: ${sale.saleCode}</div>
+            <div>PAID: ${paymentMethodLabel(sale.paymentMethod).toUpperCase()}</div>
           </div>
 
-          <div class="body-content">
-            <div class="customer-details">
-              <strong style="color:#000;">Customer Bill To</strong><br/>
-              <span style="font-size: 14px; font-weight: 600; display: block; margin: 4px 0;">${sale.customerName || 'Walk-in Customer'}</span>
-              ${sale.customerPhone || 'No contact provided'}
-            </div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th>Item Descriptor</th>
-                  <th style="text-align:center;">Qty</th>
-                  <th style="text-align:right;">Amount</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-
-            <div class="totals">
-              <div class="totals-row"><span>Subtotal</span><span>${formatCurrency(sale.subtotal)}</span></div>
-              <div class="totals-row"><span>Line Discount</span><span>-${formatCurrency(sale.lineDiscountTotal)}</span></div>
-              <div class="totals-row"><span>Order Discount</span><span>-${formatCurrency(sale.orderDiscount)}</span></div>
-              <div class="totals-row grand-total"><span>Total Paid</span><span>${formatCurrency(sale.total)}</span></div>
-            </div>
+          ${sale.customerName || sale.customerPhone ? `
+          <div class="customer-details">
+            <div>CUST: ${sale.customerName || ''}</div>
+            <div>${sale.customerPhone || ''}</div>
           </div>
+          ` : ''}
+
+          <div class="divider"></div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ITEM</th>
+                <th style="text-align:center;">QTY</th>
+                <th style="text-align:right;">AMT</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+
+          <div class="divider"></div>
+
+          <div class="totals">
+            <div class="totals-row"><span>SUBTOTAL</span><span>${formatCurrency(sale.subtotal)}</span></div>
+            ${sale.lineDiscountTotal > 0 ? `<div class="totals-row"><span>ITEM DISC</span><span>-${formatCurrency(sale.lineDiscountTotal)}</span></div>` : ''}
+            ${sale.orderDiscount > 0 ? `<div class="totals-row"><span>ORDER DISC</span><span>-${formatCurrency(sale.orderDiscount)}</span></div>` : ''}
+            <div class="totals-row grand-total"><span>TOTAL PAID</span><span>${formatCurrency(sale.total)}</span></div>
+          </div>
+
+          <div class="divider"></div>
 
           <div class="footer">
-            Thank you for shopping with Hari Charnamm.<br/>
-            Please retain this receipt for your records.
+            <div>THANK YOU FOR SHOPPING!</div>
+            <div class="social">IG: @lord_accesories</div>
+            <div class="sanskrit">
+              <div style="font-size: 16px; font-weight: bold; margin-bottom: 4px;">राधे राधे 🙏</div>
+              <div style="font-size: 14px;">सर्वे भवन्तु सुखिनः</div>
+            </div>
           </div>
         </div>
       </body>

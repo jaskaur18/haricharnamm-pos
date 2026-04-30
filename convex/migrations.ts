@@ -10,7 +10,7 @@ export const migrateData = internalMutation({
     let salesMigrated = 0;
     const sales = await ctx.db.query("sales").collect();
     for (const sale of sales) {
-      if ((sale.paymentMethod as any) === "upi_mock") {
+      if ((sale.paymentMethod as any) === "upi") {
         await ctx.db.patch(sale._id, { paymentMethod: "upi" });
         salesMigrated++;
       }
@@ -20,7 +20,7 @@ export const migrateData = internalMutation({
     let saleItemsMigrated = 0;
     const saleItems = await ctx.db.query("saleItems").collect();
     for (const item of saleItems) {
-      if ((item.paymentMethod as any) === "upi_mock") {
+      if ((item.paymentMethod as any) === "upi") {
         await ctx.db.patch(item._id, { paymentMethod: "upi" });
         saleItemsMigrated++;
       }
@@ -30,7 +30,7 @@ export const migrateData = internalMutation({
     let returnsMigrated = 0;
     const returns = await ctx.db.query("returns").collect();
     for (const ret of returns) {
-      if ((ret.refundMethod as any) === "upi_mock") {
+      if ((ret.refundMethod) === "upi") {
         await ctx.db.patch(ret._id, { refundMethod: "upi" });
         returnsMigrated++;
       }
@@ -43,8 +43,8 @@ export const migrateData = internalMutation({
     let rollupsMigrated = 0;
     const rollups = await ctx.db.query("dailySalesRollups").collect();
     for (const rollup of rollups) {
-      if ((rollup as any).upiRevenue_mock !== undefined) {
-         // handled by renaming the prop if any
+      if (rollup.upiRevenue !== undefined) {
+        // handled by renaming the prop if any
       }
     }
 

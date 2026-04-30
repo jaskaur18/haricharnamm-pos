@@ -72,5 +72,5 @@ export function stockStateTheme(stockState: 'in_stock' | 'low_stock' | 'out_of_s
 }
 
 export function paymentMethodLabel(method: 'cash' | 'upi') {
-  return method === 'cash' ? 'Cash' : 'UPI (Mock)'
+  return method === 'cash' ? 'Cash' : 'UPI'
 }

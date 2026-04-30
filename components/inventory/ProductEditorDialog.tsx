@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Image } from 'react-native'
+import { Image, Alert, Platform } from 'react-native'
 import { Plus, Save, Trash2, X, Camera } from '@tamagui/lucide-icons-2'
 import { useMutation, useQuery } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
@@ -12,6 +12,7 @@ import { pickSingleImage, uploadSelectedImage } from 'lib/upload'
 import { FormField } from 'components/ui/FormField'
 import { ProductImage } from 'components/ui/ProductImage'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
+import { SectionCard } from 'components/ui/SectionCard'
 import { SelectionField } from 'components/ui/SelectionField'
 import { Id } from 'convex/_generated/dataModel'
 
@@ -82,6 +83,7 @@ export function ProductEditorDialog({
   const gallery = useQuery(convexApi.pos.productMediaGallery, productId ? { productId: productId as Id<"products"> } : 'skip') as Array<{ _id: string; url: string }> | undefined
   const createProduct = useMutation(convexApi.inventory.create)
   const updateProduct = useMutation(convexApi.inventory.update)
+  const deleteProduct = useMutation(convexApi.inventory.deleteProduct)
   const generateUploadUrl = useMutation(convexApi.inventory.generateUploadUrl)
   const attachMedia = useMutation(convexApi.inventory.attachMedia)
 
@@ -97,6 +99,7 @@ export function ProductEditorDialog({
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Reset form on open
   useEffect(() => {
@@ -181,7 +184,7 @@ export function ProductEditorDialog({
     }
 
     if (payload.variants.some((v) => !v.label)) { toast.show('Each variant needs a label'); return }
-    
+
     // Check for duplicate variant labels
     const labels = payload.variants.map(v => v.label.toLowerCase())
     if (new Set(labels).size !== labels.length) {
@@ -211,6 +214,62 @@ export function ProductEditorDialog({
     }
   }
 
+  async function executeDelete(force = false) {
+    if (!productId) return
+    setIsDeleting(true)
+    try {
+      await deleteProduct({ productId: productId as Id<"products">, force })
+      hapticSuccess()
+      toast.show(force ? 'Product force-deleted' : 'Product deleted')
+      onOpenChange(false)
+    } catch (e) {
+      const msg = getErrorMessage(e)
+      if (msg.includes('Archive it instead')) {
+        if (Platform.OS === 'web') {
+          const doArchive = window.confirm('This product has sales history.\n\nPress OK to ARCHIVE it safely.\nPress Cancel to see Force Delete options.')
+          if (doArchive) {
+            await updateProduct({ productId: productId as Id<"products">, status: 'archived' } as any)
+            toast.show('Product archived safely.')
+            onOpenChange(false)
+          } else {
+            if (window.confirm('WARNING: Force deleting will leave orphaned sales records. Are you absolutely sure you want to FORCE DELETE?')) {
+              await executeDelete(true)
+            }
+          }
+        } else {
+          Alert.alert('Sales History Exists', 'This product has been sold. Archive it to preserve history safely, or force delete?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Archive', onPress: async () => {
+                await updateProduct({ productId: productId as Id<"products">, status: 'archived' } as any)
+                toast.show('Product archived safely.')
+                onOpenChange(false)
+              }
+            },
+            { text: 'Force Delete', style: 'destructive', onPress: () => executeDelete(true) }
+          ])
+        }
+      } else {
+        toast.show('Delete failed', { message: msg })
+      }
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  function handleDelete() {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+        executeDelete(false)
+      }
+    } else {
+      Alert.alert('Delete Product', 'Are you sure you want to delete this product?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => executeDelete(false) }
+      ])
+    }
+  }
+
   const existingImages = gallery ?? []
   const firstImageUrl = existingImages.length > 0 ? existingImages[0].url : pendingImages[0]?.uri
 
@@ -221,267 +280,298 @@ export function ProductEditorDialog({
       title={productId ? 'Edit Product' : 'New Product'}
     >
       <YStack gap="$4" py="$2">
-        {/* ═══ Section 1: Core info — 2 column on desktop ═══ */}
-        <XStack gap="$4" flexWrap="wrap">
-          {/* Left: Image + gallery */}
-          <YStack gap="$2" style={{ width: desktop ? 140 : '100%' }} items="center">
-            <YStack
-              bg="$color2" rounded="$5" overflow="hidden" items="center" justify="center"
-              style={{ width: desktop ? 140 : 120, height: desktop ? 140 : 120 }}
-            >
-              {firstImageUrl ? (
-                <Image source={{ uri: firstImageUrl }} style={{ width: '100%', height: '100%', borderRadius: 12 }} resizeMode="cover" />
-              ) : (
-                <YStack items="center" gap="$1">
-                  <Camera size={24} color="$color7" />
-                  <Paragraph color="$color8" fontSize={9}>No image</Paragraph>
-                </YStack>
-              )}
+        {/* ═══ Section 1: Core info ═══ */}
+        <SectionCard p="$4">
+          <XStack gap="$4" flexWrap="wrap">
+            {/* Left: Image + gallery */}
+            <YStack gap="$3" style={{ width: desktop ? 160 : '100%' }} items="center">
+              <YStack
+                bg="$color2" rounded="$5" overflow="hidden" items="center" justify="center" borderWidth={1} borderColor="$borderColor"
+                style={{ width: desktop ? 160 : 120, height: desktop ? 160 : 120 }}
+              >
+                {firstImageUrl ? (
+                  <Image source={{ uri: firstImageUrl }} style={{ width: '100%', height: '100%', borderRadius: 12 }} resizeMode="cover" />
+                ) : (
+                  <YStack items="center" gap="$2">
+                    <Camera size={32} color="$color7" />
+                    <Paragraph color="$color8" fontSize={10} fontWeight="600" textTransform="uppercase">No image</Paragraph>
+                  </YStack>
+                )}
+              </YStack>
+
+              {/* Thumbnails: existing + pending */}
+              <XStack gap="$2" flexWrap="wrap" justify="center">
+                {existingImages.map((img, i: number) => (
+                  <YStack key={img._id || i} rounded="$2" overflow="hidden" borderWidth={1} borderColor="$borderColor">
+                    <Image source={{ uri: img.url }} style={{ width: 36, height: 36 }} resizeMode="cover" />
+                  </YStack>
+                ))}
+                {pendingImages.map((img, i) => (
+                  <YStack key={`pending-${i}`} rounded="$2" overflow="hidden" borderWidth={1} borderColor="$accentBackground" position="relative">
+                    <Image source={{ uri: img.uri }} style={{ width: 36, height: 36 }} resizeMode="cover" />
+                    <Button
+                      size="$1"
+                      bg="$color4"
+                      borderWidth={0}
+                      rounded="$10"
+                      onPress={() => setPendingImages((c) => c.filter((_, j) => j !== i))}
+                      style={{ position: 'absolute', top: -4, right: -4, width: 18, height: 18 }}
+                    >
+                      <X size={10} color="$color10" />
+                    </Button>
+                  </YStack>
+                ))}
+              </XStack>
+
+              <Button
+                size="$3"
+                bg="$color3"
+                borderColor="$borderColor"
+                borderWidth={1}
+                hoverStyle={{ bg: '$color4' }}
+                icon={<Camera size={14} />}
+                onPress={productId ? handleUploadNow : handleAddImage}
+                disabled={isUploading}
+                width="100%"
+              >
+                {isUploading ? 'Uploading…' : 'Add Photo'}
+              </Button>
             </YStack>
 
-            {/* Thumbnails: existing + pending */}
-            <XStack gap="$1" flexWrap="wrap" justify="center">
-              {existingImages.map((img, i: number) => (
-                <YStack key={img._id || i} rounded="$2" overflow="hidden" borderWidth={1} borderColor="$borderColor">
-                  <Image source={{ uri: img.url }} style={{ width: 32, height: 32 }} resizeMode="cover" />
-                </YStack>
-              ))}
-              {pendingImages.map((img, i) => (
-                <YStack key={`pending-${i}`} rounded="$2" overflow="hidden" borderWidth={1} borderColor="$accentBackground" position="relative">
-                  <Image source={{ uri: img.uri }} style={{ width: 32, height: 32 }} resizeMode="cover" />
-                  <Button
-                    size="$1"
-                    bg="$color4"
-                    borderWidth={0}
-                    rounded="$10"
-                    onPress={() => setPendingImages((c) => c.filter((_, j) => j !== i))}
-                    style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16 }}
-                  >
-                    <X size={8} color="$color10" />
-                  </Button>
-                </YStack>
-              ))}
-            </XStack>
-
-            <Button
-              size="$2"
-              bg="$color3"
-              borderColor="$borderColor"
-              borderWidth={1}
-              hoverStyle={{ bg: '$color4' }}
-              icon={<Camera size={12} />}
-              onPress={productId ? handleUploadNow : handleAddImage}
-              disabled={isUploading}
-            >
-              {isUploading ? '…' : 'Add Photo'}
-            </Button>
-          </YStack>
-
-          {/* Right: name + category + status */}
-          <YStack flex={1} gap="$2.5" style={{ minWidth: 220 }}>
-            <FormField label="Product name *">
-              <Input
-                value={name}
-                onChangeText={setName}
-                placeholder="Krishna Mukut, Mala, etc."
-                bg="$color3"
-                borderWidth={0}
-                px="$3"
-                autoFocus
-              />
-            </FormField>
-
-            <XStack gap="$2">
-              <YStack flex={1}>
-                <SelectionField
-                  label="Category *"
-                  value={categoryId}
-                  placeholder="Select"
-                  options={(categories ?? []).map((c) => ({ label: c.name, value: c._id }))}
-                  onChange={setCategoryId}
+            {/* Right: name + category + status */}
+            <YStack flex={1} gap="$3" style={{ minWidth: 260 }}>
+              <FormField label="Product name *">
+                <Input
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Krishna Mukut, Mala, etc."
+                  bg="$color3"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  px="$3"
+                  autoFocus
                 />
-              </YStack>
-              <YStack flex={1}>
-                <SelectionField
-                  label="Subcategory"
-                  value={subcategoryId}
-                  placeholder="None"
-                  options={[{ label: 'None', value: null }, ...getSubcategoryOptions(categories, categoryId)]}
-                  onChange={setSubcategoryId}
-                />
-              </YStack>
-            </XStack>
+              </FormField>
 
-            <XStack gap="$2">
-              <YStack flex={1}>
-                <FormField label="Tags">
-                  <Input value={merchandisingTags} onChangeText={setMerchandisingTags} placeholder="festival, premium" bg="$color3" borderWidth={0} px="$3" fontSize={12} />
-                </FormField>
-              </YStack>
-              <YStack style={{ width: 100 }}>
-                <FormField label="Status">
-                  <XStack bg="$color2" rounded="$3" p="$0.5" borderWidth={1} borderColor="$borderColor" height={36}>
-                    <Button size="$2" flex={1} bg={status === 'active' ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setStatus('active')}>
-                      <Paragraph fontSize={10} fontWeight={status === 'active' ? '700' : '500'} color={status === 'active' ? '$color12' : '$color8'}>Active</Paragraph>
-                    </Button>
-                    <Button size="$2" flex={1} bg={status === 'archived' ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setStatus('archived')}>
-                      <Paragraph fontSize={10} fontWeight={status === 'archived' ? '700' : '500'} color={status === 'archived' ? '$color12' : '$color8'}>Arch</Paragraph>
-                    </Button>
-                  </XStack>
-                </FormField>
-              </YStack>
-            </XStack>
-          </YStack>
-        </XStack>
+              <XStack gap="$3" flexWrap="wrap">
+                <YStack flex={1} style={{ minWidth: 140 }}>
+                  <SelectionField
+                    label="Category *"
+                    value={categoryId}
+                    placeholder="Select"
+                    options={(categories ?? []).map((c) => ({ label: c.name, value: c._id }))}
+                    onChange={setCategoryId}
+                  />
+                </YStack>
+                <YStack flex={1} style={{ minWidth: 140 }}>
+                  <SelectionField
+                    label="Subcategory"
+                    value={subcategoryId}
+                    placeholder="None"
+                    options={[{ label: 'None', value: null }, ...getSubcategoryOptions(categories, categoryId)]}
+                    onChange={setSubcategoryId}
+                  />
+                </YStack>
+              </XStack>
 
-        {/* ═══ Section 2: Details (collapsible on small screens) ═══ */}
-        <XStack gap="$2">
-          <YStack flex={1}>
-            <FormField label="Description">
-              <TextArea value={description} onChangeText={setDescription} placeholder="Material, size, cultural significance…" bg="$color3" borderWidth={0} px="$3" py="$2" style={{ minHeight: 60 }} />
-            </FormField>
-          </YStack>
-          <YStack flex={1}>
-            <FormField label="Brand copy">
-              <TextArea value={brandCopy} onChangeText={setBrandCopy} placeholder="Branded tagline" bg="$color3" borderWidth={0} px="$3" py="$2" style={{ minHeight: 60 }} />
-            </FormField>
-          </YStack>
-        </XStack>
+              <XStack gap="$3" flexWrap="wrap">
+                <YStack flex={2} style={{ minWidth: 160 }}>
+                  <FormField label="Tags">
+                    <Input value={merchandisingTags} onChangeText={setMerchandisingTags} placeholder="festival, premium" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" />
+                  </FormField>
+                </YStack>
+                <YStack flex={1} style={{ minWidth: 120 }}>
+                  <FormField label="Status">
+                    <XStack bg="$color3" rounded="$3" p="$0.5" borderWidth={1} borderColor="$borderColor" height={42}>
+                      <Button size="$3" flex={1} bg={status === 'active' ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setStatus('active')}>
+                        <Paragraph fontSize={12} fontWeight={status === 'active' ? '800' : '600'} color={status === 'active' ? '$color12' : '$color8'}>Active</Paragraph>
+                      </Button>
+                      <Button size="$3" flex={1} bg={status === 'archived' ? '$color4' : 'transparent'} borderWidth={0} rounded="$2" onPress={() => setStatus('archived')}>
+                        <Paragraph fontSize={12} fontWeight={status === 'archived' ? '800' : '600'} color={status === 'archived' ? '$color12' : '$color8'}>Arch</Paragraph>
+                      </Button>
+                    </XStack>
+                  </FormField>
+                </YStack>
+              </XStack>
+            </YStack>
+          </XStack>
+        </SectionCard>
 
-        {notes || productId ? (
-          <FormField label="Internal notes">
-            <Input value={notes} onChangeText={setNotes} placeholder="Private notes" bg="$color3" borderWidth={0} px="$3" />
-          </FormField>
-        ) : null}
+        {/* ═══ Section 2: Details ═══ */}
+        <SectionCard p="$4">
+          <XStack gap="$4" flexWrap="wrap">
+            <YStack flex={1} style={{ minWidth: 260 }}>
+              <FormField label="Description">
+                <TextArea value={description} onChangeText={setDescription} placeholder="Material, size, cultural significance…" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" py="$2" style={{ minHeight: 80 }} />
+              </FormField>
+            </YStack>
+            <YStack flex={1} style={{ minWidth: 260 }}>
+              <FormField label="Brand copy">
+                <TextArea value={brandCopy} onChangeText={setBrandCopy} placeholder="Branded tagline" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" py="$2" style={{ minHeight: 80 }} />
+              </FormField>
+            </YStack>
+          </XStack>
 
-        {/* ═══ Section 3: Variants — compact table-like rows ═══ */}
-        <YStack gap="$2">
+          {notes || productId ? (
+            <YStack mt="$3">
+              <FormField label="Internal notes">
+                <Input value={notes} onChangeText={setNotes} placeholder="Private notes" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" />
+              </FormField>
+            </YStack>
+          ) : null}
+        </SectionCard>
+
+        {/* ═══ Section 3: Variants ═══ */}
+        <SectionCard p="$4" gap="$3">
           <XStack justify="space-between" items="center">
-            <Paragraph fontSize="$3" fontWeight="800">Variants ({variants.length})</Paragraph>
-            <Button size="$2" bg="$color3" borderColor="$borderColor" borderWidth={1} hoverStyle={{ bg: '$color4' }} icon={<Plus size={12} />} onPress={() => setVariants((c) => [...c, createEmptyVariant()])}>
-              Add
+            <Paragraph fontSize="$5" fontWeight="900" letterSpacing={-0.5}>Variants ({variants.length})</Paragraph>
+            <Button size="$3" theme="accent" icon={<Plus size={16} />} onPress={() => setVariants((c) => [...c, createEmptyVariant()])}>
+              Add Variant
             </Button>
           </XStack>
 
-          {variants.map((v, idx) => (
-            <YStack key={v.variantId ?? `new-${idx}`} bg="$color2" rounded="$4" p="$3" gap="$2" borderWidth={1} borderColor="$borderColor">
-              <XStack gap="$1.5" items="center">
-                <Paragraph color="$color8" fontSize={10} fontWeight="600" style={{ width: 14 }}>{idx + 1}</Paragraph>
-                {/* Row 1: Label + Price + Barcode inline */}
-                <Input
-                  flex={2}
-                  value={v.label}
-                  onChangeText={(val) => updateVariant(idx, { label: val })}
-                  placeholder="Label (Red Stone)"
-                  bg="$color3"
-                  borderWidth={0}
-                  px="$2"
-                  size="$2.5"
-                  fontSize={12}
-                />
-                <XStack items="center" bg="$color3" rounded="$3" px="$2" flex={1}>
-                  <Paragraph color="$color8" fontSize={10}>₹</Paragraph>
-                  <Input
-                    flex={1}
-                    value={v.salePrice}
-                    onChangeText={(val) => updateVariant(idx, { salePrice: val })}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    bg="transparent"
-                    borderWidth={0}
-                    px="$1"
-                    fontSize={12}
-                    style={{ textAlign: 'right' }}
-                    color="$color12"
-                  />
-                </XStack>
-                <Input
-                  flex={1}
-                  value={v.barcode}
-                  onChangeText={(val) => updateVariant(idx, { barcode: val })}
-                  placeholder="Barcode"
-                  bg="$color3"
-                  borderWidth={0}
-                  px="$2"
-                  size="$2.5"
-                  fontSize={12}
-                />
+          <YStack gap="$3">
+            {variants.map((v, idx) => (
+              <YStack key={v.variantId ?? `new-${idx}`} bg="$color2" rounded="$4" p="$3" gap="$3" borderWidth={1} borderColor="$borderColor" position="relative">
                 {variants.length > 1 ? (
-                  <Button size="$2" bg="transparent" borderWidth={0} p="$1" onPress={() => setVariants((c) => c.filter((_, i) => i !== idx))} pressStyle={{ scale: 0.9 }} hoverStyle={{ bg: '$color3' }}>
-                    <Trash2 size={13} color="$color8" />
+                  <Button size="$2" bg="$color3" borderWidth={1} borderColor="$borderColor" position="absolute" t={-8} r={-8} p="$1.5" rounded="$12" z={10} onPress={() => setVariants((c) => c.filter((_, i) => i !== idx))} hoverStyle={{ bg: '$dangerSoft' }}>
+                    <Trash2 size={14} color="$color10" />
                   </Button>
                 ) : null}
-              </XStack>
 
-              {/* Row 2: Threshold + Opening Qty + Attributes */}
-              <XStack gap="$1.5" items="flex-end">
-                <YStack flex={1}>
-                  <Paragraph color="$color8" fontSize={9} mb="$0.5">Reorder thr.</Paragraph>
-                  <Input
-                    value={v.reorderThreshold}
-                    onChangeText={(val) => updateVariant(idx, { reorderThreshold: val })}
-                    keyboardType="numeric"
-                    placeholder="5"
-                    bg="$color3"
-                    borderWidth={0}
-                    px="$2"
-                    size="$2.5"
-                    fontSize={12}
-                  />
-                </YStack>
-                <YStack flex={1}>
-                  <Paragraph color="$color8" fontSize={9} mb="$0.5">
-                    {v.variantId ? 'On hand (read-only)' : 'Opening qty'}
-                  </Paragraph>
-                  <Input
-                    value={v.openingQuantity}
-                    onChangeText={(val) => updateVariant(idx, { openingQuantity: val })}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    bg="$color3"
-                    borderWidth={0}
-                    px="$2"
-                    size="$2.5"
-                    fontSize={12}
-                    disabled={!!v.variantId}
-                    opacity={v.variantId ? 0.5 : 1}
-                  />
-                </YStack>
-                <YStack flex={2}>
-                  <Paragraph color="$color8" fontSize={9} mb="$0.5">Attributes (Name: Value per line)</Paragraph>
-                  <TextArea
-                    value={v.attributesText}
-                    onChangeText={(val) => updateVariant(idx, { attributesText: val })}
-                    placeholder={'Color: Red\nStone: Pearl'}
-                    bg="$color3"
-                    borderWidth={0}
-                    px="$2"
-                    py="$1"
-                    fontSize={12}
-                    style={{ minHeight: 36 }}
-                  />
-                </YStack>
-              </XStack>
-            </YStack>
-          ))}
-        </YStack>
+                <XStack gap="$3" flexWrap="wrap" items="flex-start">
+                  <YStack flex={2} style={{ minWidth: 160 }}>
+                    <FormField label={`Variant ${idx + 1} Label`}>
+                      <Input
+                        value={v.label}
+                        onChangeText={(val) => updateVariant(idx, { label: val })}
+                        placeholder="E.g. Large Red"
+                        bg="$color3"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$3"
+                      />
+                    </FormField>
+                  </YStack>
+                  <YStack flex={1} style={{ minWidth: 120 }}>
+                    <FormField label="Sale Price">
+                      <XStack items="center" bg="$color3" rounded="$3" borderWidth={1} borderColor="$borderColor" px="$3" height={44}>
+                        <Paragraph color="$color8" fontSize="$3" fontWeight="600">₹</Paragraph>
+                        <Input
+                          flex={1}
+                          value={v.salePrice}
+                          onChangeText={(val) => updateVariant(idx, { salePrice: val })}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          bg="transparent"
+                          borderWidth={0}
+                          px="$2"
+                          color="$color12"
+                        />
+                      </XStack>
+                    </FormField>
+                  </YStack>
+                  <YStack flex={1} style={{ minWidth: 140 }}>
+                    <FormField label="Barcode">
+                      <Input
+                        value={v.barcode}
+                        onChangeText={(val) => updateVariant(idx, { barcode: val })}
+                        placeholder="Scan or type"
+                        bg="$color3"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$3"
+                      />
+                    </FormField>
+                  </YStack>
+                </XStack>
+
+                <XStack gap="$3" flexWrap="wrap" items="flex-start">
+                  <YStack flex={1} style={{ minWidth: 120 }}>
+                    <FormField label="Reorder Thr.">
+                      <Input
+                        value={v.reorderThreshold}
+                        onChangeText={(val) => updateVariant(idx, { reorderThreshold: val })}
+                        keyboardType="numeric"
+                        placeholder="5"
+                        bg="$color3"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$3"
+                      />
+                    </FormField>
+                  </YStack>
+                  <YStack flex={1} style={{ minWidth: 120 }}>
+                    <FormField label={v.variantId ? 'On Hand' : 'Opening Qty'}>
+                      <Input
+                        value={v.openingQuantity}
+                        onChangeText={(val) => updateVariant(idx, { openingQuantity: val })}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        bg="$color3"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$3"
+                        disabled={!!v.variantId}
+                        opacity={v.variantId ? 0.6 : 1}
+                      />
+                    </FormField>
+                  </YStack>
+                  <YStack flex={2} style={{ minWidth: 200 }}>
+                    <FormField label="Attributes (One per line: 'Name: Value')">
+                      <TextArea
+                        value={v.attributesText}
+                        onChangeText={(val) => updateVariant(idx, { attributesText: val })}
+                        placeholder={'Color: Red\nMaterial: Pearl'}
+                        bg="$color3"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$3"
+                        py="$2"
+                        style={{ minHeight: 44 }}
+                      />
+                    </FormField>
+                  </YStack>
+                </XStack>
+              </YStack>
+            ))}
+          </YStack>
+        </SectionCard>
 
         {/* ═══ Save ═══ */}
-        <XStack justify="flex-end" gap="$2">
-          <Button bg="$color3" borderColor="$borderColor" borderWidth={1} hoverStyle={{ bg: '$color4' }} onPress={() => onOpenChange(false)} size="$3">
-            Cancel
-          </Button>
-          <Button
-            theme="accent"
-            size="$3"
-            icon={<Save size={14} />}
-            onPress={handleSave}
-            disabled={isSaving}
-            hoverStyle={{ scale: 1.02 }}
-            pressStyle={{ scale: 0.97 }}
-          >
-            {isSaving ? 'Saving…' : productId ? 'Update Product' : 'Create Product'}
-          </Button>
+        <XStack justify="space-between" items="center">
+          <XStack>
+            {productId ? (
+              <Button
+                size="$3"
+                icon={<Trash2 size={14} />}
+                onPress={handleDelete}
+                disabled={isDeleting || isSaving}
+                hoverStyle={{ bg: '$red5' }}
+                bg="$color2"
+                borderWidth={1}
+                borderColor="$red8"
+              >
+                {isDeleting ? 'Deleting…' : 'Delete'}
+              </Button>
+            ) : <YStack />}
+          </XStack>
+          <XStack justify="flex-end" gap="$2">
+            <Button bg="$color3" borderColor="$borderColor" borderWidth={1} hoverStyle={{ bg: '$color4' }} onPress={() => onOpenChange(false)} size="$3">
+              Cancel
+            </Button>
+            <Button
+              theme="accent"
+              size="$3"
+              icon={<Save size={14} />}
+              onPress={handleSave}
+              disabled={isSaving}
+              hoverStyle={{ scale: 1.02 }}
+              pressStyle={{ scale: 0.97 }}
+            >
+              {isSaving ? 'Saving…' : productId ? 'Update Product' : 'Create Product'}
+            </Button>
+          </XStack>
         </XStack>
       </YStack>
     </ResponsiveDialog>

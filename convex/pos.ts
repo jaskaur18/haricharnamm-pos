@@ -94,6 +94,12 @@ export const catalogSearch = query({
     search: nullableStringValidator,
     categoryId: nullableCategoryIdValidator,
     subcategoryId: nullableCategoryIdValidator,
+    stockState: v.union(
+      v.literal("all"),
+      v.literal("in_stock"),
+      v.literal("low_stock"),
+      v.literal("out_of_stock"),
+    ),
   },
   handler: async (ctx, args) => {
     const searchValue = args.search?.trim() ?? "";
@@ -112,10 +118,11 @@ export const catalogSearch = query({
       );
 
       if (directMatches.length > 0) {
+        const serializedMatches = await Promise.all(
+          directMatches.map((match) => serializeCatalogItem(ctx, match)),
+        );
         return {
-          page: await Promise.all(
-            directMatches.map((match) => serializeCatalogItem(ctx, match)),
-          ),
+          page: serializedMatches.filter((p) => args.stockState === "all" || p.stockState === args.stockState),
           isDone: true,
           continueCursor: args.paginationOpts.cursor,
         };
@@ -139,11 +146,12 @@ export const catalogSearch = query({
         });
 
       const result = await searchQuery.paginate(args.paginationOpts);
+      const serializedPage = await Promise.all(
+        result.page.map((variant) => serializeCatalogItem(ctx, variant)),
+      );
       return {
         ...result,
-        page: await Promise.all(
-          result.page.map((variant) => serializeCatalogItem(ctx, variant)),
-        ),
+        page: serializedPage.filter((p) => args.stockState === "all" || p.stockState === args.stockState),
       };
     }
 
@@ -169,11 +177,12 @@ export const catalogSearch = query({
     }
 
     const result = await baseQuery.order("desc").paginate(args.paginationOpts);
+    const serializedPage = await Promise.all(
+      result.page.map((variant) => serializeCatalogItem(ctx, variant)),
+    );
     return {
       ...result,
-      page: await Promise.all(
-        result.page.map((variant) => serializeCatalogItem(ctx, variant)),
-      ),
+      page: serializedPage.filter((p) => args.stockState === "all" || p.stockState === args.stockState),
     };
   },
 });

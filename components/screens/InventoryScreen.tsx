@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { AppInput, AppTextArea } from 'components/ui/AppInput'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocalSearchParams } from 'expo-router'
 import { Grid2x2, List, PackagePlus, Pencil, Search, SlidersHorizontal, Warehouse } from '@tamagui/lucide-icons-2'
 import { usePaginatedQuery, useQuery } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
-import { Button, Input, Paragraph, Spinner, XStack, YStack, useMedia } from 'tamagui'
+import { Button,  Paragraph, Spinner, XStack, YStack, useMedia } from 'tamagui'
 import { convexApi } from 'lib/convex'
 import { CategoryNode, getSubcategoryOptions } from 'lib/categories'
 import { formatCurrency, formatNumber } from 'lib/format'
@@ -22,13 +23,16 @@ import { MobileFilterSheet } from 'components/ui/MobileFilterSheet'
 import { SectionCard } from 'components/ui/SectionCard'
 
 export function InventoryScreen() {
-  const router = useRouter()
   const params = useLocalSearchParams<{ create?: string | string[]; openAt?: string | string[] }>()
   const media = useMedia()
   const mobile = media.maxMd
   const desktop = !mobile
   const categories = useQuery(convexApi.inventory.listCategories, { includeInactive: true }) as CategoryNode[] | undefined
   const toast = useToastController()
+  // Track which openAt timestamp we already handled to prevent double-fire.
+  // The bug: router.replace('/inventory') to clear params caused a re-render
+  // which re-triggered this effect with empty params, immediately closing the dialog.
+  const handledOpenAt = useRef<string | null>(null)
 
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
@@ -56,18 +60,24 @@ export function InventoryScreen() {
     const create = Array.isArray(params.create) ? params.create[0] : params.create
     const openAt = Array.isArray(params.openAt) ? params.openAt[0] : params.openAt
     if (create !== 'product' || !openAt) return
+    // Skip if we already handled this exact navigation event
+    if (handledOpenAt.current === openAt) return
     if (categories === undefined) return
-    
+
+    // Mark as handled before any async/state updates
+    handledOpenAt.current = openAt
+
     if (categories.length === 0) {
       toast.show('Create categories first', { message: 'Go to Settings.' })
-      router.replace('/inventory')
       return
     }
 
     setEditingProductId(null)
     setEditorOpen(true)
-    router.replace('/inventory')
-  }, [params.create, params.openAt, categories, router])
+    // Don't call router.replace here — doing so causes a re-render that clears
+    // the params and re-fires this effect with empty create/openAt, which would
+    // immediately close the dialog. The URL params are harmless to leave in place.
+  }, [params.create, params.openAt, categories])
 
   const debouncedSearch = useDebounce(search, 300)
   const { results, status: pageStatus, loadMore } = usePaginatedQuery(
@@ -110,7 +120,7 @@ export function InventoryScreen() {
       py="$1"
     >
       <Search size={16} color="$color8" />
-      <Input
+      <AppInput
         value={search}
         onChangeText={setSearch}
         placeholder="Search by name, code, barcode"

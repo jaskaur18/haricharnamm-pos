@@ -63,6 +63,12 @@ const darkTheme = {
   backgroundStrong:      '#0d0b09',
   backgroundTransparent: 'rgba(0,0,0,0)',
 
+  // ── CRITICAL: In our custom dark theme, the color scale is:
+  //   color1  = darkest bg  (#0f0d0b)
+  //   color12 = lightest fg (#ffffff)
+  // Tamagui's default dark theme uses the OPPOSITE direction
+  // (color1=white, color12=black) which is why component sub-themes
+  // resolve to wrong colors. We must explicitly set all 12 steps. ──
   color:   palette.textWhite,
   color1:  palette.bgDeep,
   color2:  palette.bgBase,
@@ -124,6 +130,46 @@ const accentTheme = {
   borderColorPress: palette.goldDeep,
 }
 
+// ─── Component sub-themes ────────────────────────────────────────────────────
+// Tamagui uses component-specific sub-themes (e.g. dark_Input, dark_Button)
+// to resolve the `color` and `background` tokens used inside each component.
+//
+// PROBLEM: When you override `dark` with a custom color scale (color1=dark,
+// color12=white), the inherited defaultConfig sub-themes still reference
+// the DEFAULT dark scale (color1=white, color12=dark) — the OPPOSITE direction.
+//
+// This is why Input fields show black text on dark backgrounds on native:
+// the `dark_Input` sub-theme resolves `color` → color12 of the DEFAULT dark
+// scale → which is near-black (#111), rendered on top of our dark bgRaised.
+//
+// FIX: Override all component sub-themes with our correct dark token values.
+// The key tokens for Input/TextArea on native are:
+//   - color         → the typed text color
+//   - placeholderColor → the placeholder text color
+//   - background    → the field background (transparent in most cases since
+//                     the parent XStack sets bg)
+//   - borderColor   → field border
+const inputSubTheme = {
+  ...darkTheme,
+  // Typed text: must be white/light
+  color:            palette.textWhite,
+  // Placeholder: visible mid-gray on dark bg
+  placeholderColor: palette.textPlaceholder,
+  // Background: transparent so parent bg shows through
+  background:       palette.bgRaised,
+  backgroundFocus:  palette.bgHover,
+  borderColor:      palette.borderWhite08,
+  borderColorFocus: palette.gold,
+}
+
+const buttonSubTheme = {
+  ...darkTheme,
+  color:            palette.textWhite,
+  background:       palette.bgRaised,
+  backgroundHover:  palette.bgHover,
+  backgroundPress:  palette.bgMuted,
+}
+
 // ─── Config ─────────────────────────────────────────────────────────────────
 export const config = createTamagui({
   ...defaultConfig,
@@ -137,12 +183,31 @@ export const config = createTamagui({
     touch: { pointer: 'coarse' },
   },
   themes: {
+    // Keep ALL default sub-themes first (for things we don't override)
     ...defaultConfig.themes,
+
+    // ── Root themes ──
     dark: darkTheme,
     // Force dark as light too so theme switching has no effect
     light: darkTheme,
+
+    // ── Accent ──
     dark_accent: accentTheme,
     light_accent: accentTheme,
+
+    // ── Component sub-themes: fix inverted color scale on native ──
+    // These are the sub-themes Tamagui applies automatically to Input,
+    // TextArea, and Button components when the root theme is "dark" or "light".
+    dark_Input:       inputSubTheme,
+    light_Input:      inputSubTheme,
+    dark_TextArea:    inputSubTheme,
+    light_TextArea:   inputSubTheme,
+    dark_Button:      buttonSubTheme,
+    light_Button:     buttonSubTheme,
+
+    // Accent button keeps its own colors
+    dark_accent_Button: accentTheme,
+    light_accent_Button: accentTheme,
   },
 })
 

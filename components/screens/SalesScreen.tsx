@@ -1,10 +1,11 @@
+import { AppInput, AppTextArea } from 'components/ui/AppInput'
 import { useEffect, useState } from 'react'
 import { Platform, RefreshControl } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useConvex, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
 import { Calendar, Filter, MessageSquare, RotateCcw, X } from '@tamagui/lucide-icons-2'
-import { Button, Input, Paragraph, ScrollView, Spinner, TextArea, XStack, YStack, useMedia } from 'tamagui'
+import { Button,  Paragraph, ScrollView, Spinner,  XStack, YStack, useMedia } from 'tamagui'
 import { convexApi } from 'lib/convex'
 import { Id } from 'convex/_generated/dataModel'
 import { getErrorMessage } from 'lib/errors'
@@ -247,11 +248,11 @@ function SaleDetailPanel({ saleId }: { saleId: string | null }) {
                 <Paragraph fontWeight="800" fontSize="$3">{item.productName}</Paragraph>
                 <Paragraph color="$color8" fontSize="$2">{item.variantLabel} · {formatNumber(item.remainingQty)} remain</Paragraph>
               </YStack>
-              <Input value={quantities[item._id] ?? '0'} onChangeText={(v) => setQuantities((c) => ({ ...c, [item._id]: v }))} keyboardType="numeric" style={{ width: 60 }} size="$3" bg="$color2" borderWidth={1} borderColor="$borderColor" px="$4" />
+              <AppInput value={quantities[item._id] ?? '0'} onChangeText={(v) => setQuantities((c) => ({ ...c, [item._id]: v }))} keyboardType="numeric" style={{ width: 60 }} size="$3" bg="$color2" borderWidth={1} borderColor="$borderColor" px="$4" />
             </XStack>
           ))}
           <SelectionField label="Refund method" value={refundMethod} placeholder="Select" options={[{ label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi' }]} onChange={(v) => setRefundMethod((v ?? 'cash') as typeof refundMethod)} />
-          <FormField label="Note"><TextArea value={refundNote} onChangeText={setRefundNote} placeholder="Optional" style={{ minHeight: 80 }} px="$4" py="$3" bg="$color2" borderWidth={1} borderColor="$borderColor" /></FormField>
+          <FormField label="Note"><AppTextArea value={refundNote} onChangeText={setRefundNote} placeholder="Optional" style={{ minHeight: 80 }} px="$4" py="$3" bg="$color2" borderWidth={1} borderColor="$borderColor" /></FormField>
           <XStack justify="flex-end"><Button theme="accent" onPress={handleReturn} disabled={isSubmitting}>{isSubmitting ? 'Saving…' : 'Complete return'}</Button></XStack>
         </YStack>
       </ResponsiveDialog>
@@ -435,8 +436,8 @@ export function SalesScreen() {
           ))}
           {datePreset === 'custom' ? (
             <XStack gap="$2" ml="$2">
-              <Input value={fromDate} onChangeText={setFromDate} placeholder="From YYYY-MM-DD" size="$2.5" style={{ width: 140 }} bg="$color3" color="$color12" borderWidth={1} borderColor="$borderColor" px="$3" />
-              <Input value={toDate} onChangeText={setToDate} placeholder="To YYYY-MM-DD" size="$2.5" style={{ width: 140 }} bg="$color3" color="$color12" borderWidth={1} borderColor="$borderColor" px="$3" />
+              <AppInput value={fromDate} onChangeText={setFromDate} placeholder="From YYYY-MM-DD" size="$2.5" style={{ width: 140 }} bg="$color3" color="$color12" borderWidth={1} borderColor="$borderColor" px="$3" />
+              <AppInput value={toDate} onChangeText={setToDate} placeholder="To YYYY-MM-DD" size="$2.5" style={{ width: 140 }} bg="$color3" color="$color12" borderWidth={1} borderColor="$borderColor" px="$3" />
             </XStack>
           ) : null}
         </XStack>
@@ -474,7 +475,7 @@ export function SalesScreen() {
         </XStack>
         <XStack gap="$2" flexWrap="wrap">
           <YStack flex={1} style={{ minWidth: desktop ? 160 : '100%' }}>
-            <FormField label="Search"><Input value={search} onChangeText={setSearch} placeholder="Code, customer, phone…" size="$3" px="$4" bg="$color3" color="$color12" borderWidth={1} borderColor="$borderColor" /></FormField>
+            <FormField label="Search"><AppInput value={search} onChangeText={setSearch} placeholder="Code, customer, phone…" size="$3" px="$4" bg="$color3" color="$color12" borderWidth={1} borderColor="$borderColor" /></FormField>
           </YStack>
           <YStack style={{ minWidth: desktop ? 130 : '30%', flex: desktop ? undefined : 1 }}>
             <SelectionField label="Payment" value={paymentMethod} placeholder="All" options={[{ label: 'All', value: 'all' }, { label: 'Cash', value: 'cash' }, { label: 'UPI', value: 'upi' }]} onChange={(v) => setPaymentMethod((v ?? 'all') as typeof paymentMethod)} />

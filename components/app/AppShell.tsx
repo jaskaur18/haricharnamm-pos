@@ -7,16 +7,18 @@ import {
   Boxes,
   Cog,
   LayoutDashboard,
+  LogOut,
   PackagePlus,
   Plus,
   ReceiptText,
   ShoppingCart,
 } from '@tamagui/lucide-icons-2'
-import { Button, Paragraph, ScrollView, XStack, YStack, useMedia } from 'tamagui'
+import { Button, Image, Paragraph, ScrollView, XStack, YStack, useMedia } from 'tamagui'
 import { hapticLight } from 'lib/haptics'
 import { useAuthSession } from 'components/auth/AuthProvider'
 import { ResponsiveDialog } from 'components/ui/ResponsiveDialog'
 import type { WebAwareViewStyle } from 'types/tamagui'
+import Logo from '../../assets/images/logo.png'
 
 const mobileNavItems = [
   { href: '/', label: 'Home', icon: LayoutDashboard },
@@ -36,12 +38,12 @@ const desktopNavItems = [
 ] as const
 
 const screenMeta: Record<string, { title: string; subtitle: string }> = {
-  '/': { title: 'Dashboard', subtitle: 'Today’s movement' },
-  '/inventory': { title: 'Catalog and stock', subtitle: 'Inventory + POS' },
-  '/pos': { title: 'Fast checkout', subtitle: 'Inventory + POS' },
-  '/sales': { title: 'Receipts and returns', subtitle: 'Inventory + POS' },
-  '/reports': { title: 'Business analytics', subtitle: 'Inventory + POS' },
-  '/settings': { title: 'Store structure', subtitle: 'Inventory + POS' },
+  '/': { title: 'Dashboard', subtitle: "Today's movement" },
+  '/inventory': { title: 'Catalog & Stock', subtitle: 'Inventory + POS' },
+  '/pos': { title: 'Fast Checkout', subtitle: 'Inventory + POS' },
+  '/sales': { title: 'Receipts', subtitle: 'Inventory + POS' },
+  '/reports': { title: 'Analytics', subtitle: 'Inventory + POS' },
+  '/settings': { title: 'Settings', subtitle: 'Store structure' },
 }
 
 function isItemActive(pathname: string, href: string) {
@@ -57,17 +59,14 @@ function resolveMeta(pathname: string) {
 function BrandMark() {
   return (
     <XStack items="center" gap="$2.5">
-      <YStack
-        width={38}
-        height={38}
-        rounded="$6"
-        items="center"
-        justify="center"
-        bg="$color10"
-      >
-        <Paragraph color="$accentColor" fontSize={13} fontWeight="900" letterSpacing={0.6}>HC</Paragraph>
-      </YStack>
-      <YStack gap={2}>
+      <Image
+        src={Logo}
+        width={40}
+        height={40}
+        objectFit="contain"
+        borderRadius={8}
+      />
+      <YStack gap={1}>
         <Paragraph color="$color12" fontSize="$3" fontWeight="900" letterSpacing={0.8}>
           HARI CHARNAMM
         </Paragraph>
@@ -93,7 +92,10 @@ function DesktopAppShell({
   const meta = resolveMeta(pathname)
 
   return (
-    <YStack flex={1} bg="$background" theme="dark" minH={Platform.OS === 'web' ? '100vh' : undefined}>
+    // NOTE: No theme="dark" here — Provider sets defaultTheme="dark" globally.
+    // Redundantly applying theme="dark" inside a dark root causes Tamagui to
+    // resolve tokens as dark_dark (non-existent) → falls back to light theme.
+    <YStack flex={1} bg="$background" minH={Platform.OS === 'web' ? '100vh' : undefined}>
       <XStack
         px="$6"
         py="$3"
@@ -210,45 +212,61 @@ function MobileAppShell({
   const mobileUsesShellScroll = pathname !== '/pos'
 
   return (
-    <YStack flex={1} bg="$background" theme="dark" minH={isWeb ? '100vh' : undefined}>
+    // NOTE: No theme="dark" — see DesktopAppShell comment above.
+    <YStack flex={1} bg="$background" minH={isWeb ? '100vh' : undefined}>
+      {/* ── Compact mobile header: logo left + page title + New button ── */}
       <YStack
-        pt={insets.top + 8}
+        pt={insets.top + 4}
         px="$4"
-        pb="$3"
-        gap="$3"
-        bg="$background"
+        pb="$2.5"
+        bg="$color1"
         borderBottomWidth={1}
         borderColor="$borderColor"
       >
         <XStack justify="space-between" items="center">
-          <YStack gap="$0.5">
-            <Paragraph color="$color12" fontSize="$7" fontWeight="900" letterSpacing={-0.8}>
-              {meta.title}
-            </Paragraph>
-            <Paragraph color="$color10" fontSize="$2">
-              {meta.subtitle}
-            </Paragraph>
-          </YStack>
-          <Button
-            onPress={() => setNewMenuOpen(true)}
-            theme="accent"
-            size="$3"
-            rounded="$6"
-            icon={<Plus size={14} />}
-          >
-            New
-          </Button>
+          {/* Left: logo + brand */}
+          <Pressable onPress={() => onNav('/')}>
+            <XStack items="center" gap="$2">
+              <Image
+                src={Logo}
+                width={36}
+                height={36}
+                objectFit="contain"
+                borderRadius={8}
+              />
+              <YStack gap={1}>
+                <Paragraph color="$color12" fontSize="$2" fontWeight="900" letterSpacing={0.6}>
+                  HARI CHARNAMM
+                </Paragraph>
+                <Paragraph color="$color8" fontSize={10}>
+                  {meta.title}
+                </Paragraph>
+              </YStack>
+            </XStack>
+          </Pressable>
+
+          {/* Right: sign-out (icon) + New button */}
+          <XStack gap="$2" items="center">
+            <Button
+              size="$2.5"
+              bg="$color2"
+              borderWidth={1}
+              borderColor="$borderColor"
+              onPress={onLogout}
+              icon={<LogOut size={14} color="$color10" />}
+              circular
+            />
+            <Button
+              onPress={() => setNewMenuOpen(true)}
+              theme="accent"
+              size="$3"
+              rounded="$6"
+              icon={<Plus size={14} />}
+            >
+              New
+            </Button>
+          </XStack>
         </XStack>
-        <Button
-          size="$2.5"
-          bg="$color3"
-          borderWidth={1}
-          borderColor="$borderColor"
-          onPress={onLogout}
-          style={{ alignSelf: 'flex-start' }}
-        >
-          Sign Out
-        </Button>
       </YStack>
 
       <YStack flex={1}>
@@ -256,19 +274,21 @@ function MobileAppShell({
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
-              px: 12,
-              pt: 12,
-              pb: insets.bottom + 86,
-            }}
+              paddingHorizontal: 12,
+              paddingTop: 12,
+              paddingBottom: insets.bottom + 90,
+            } as any}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <YStack gap="$4">{children}</YStack>
+            <YStack gap="$3">{children}</YStack>
           </ScrollView>
         ) : (
           <YStack flex={1}>{children}</YStack>
         )}
       </YStack>
 
+      {/* ── Floating bottom nav bar ── */}
       <XStack
         bg="$color1"
         borderWidth={1}
@@ -280,9 +300,9 @@ function MobileAppShell({
         style={isWeb
           ? {
             position: 'fixed',
-            left: 20,
-            right: 20,
-            bottom: Math.max(insets.bottom, 20),
+            left: 16,
+            right: 16,
+            bottom: Math.max(insets.bottom, 16),
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
             zIndex: 100,
@@ -293,9 +313,9 @@ function MobileAppShell({
           } as WebAwareViewStyle
           : {
             position: 'absolute',
-            left: 20,
-            right: 20,
-            bottom: Math.max(insets.bottom, 20),
+            left: 16,
+            right: 16,
+            bottom: Math.max(insets.bottom, 16),
             zIndex: 100,
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 16 },

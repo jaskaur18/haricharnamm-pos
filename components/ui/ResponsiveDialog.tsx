@@ -33,6 +33,8 @@ export function ResponsiveDialog({
 
   // ── Native mobile: RN Modal (reliable full-screen overlay) ──
   if (!isWeb && media.maxMd) {
+    const screenHeight = Dimensions.get('window').height
+
     return (
       <Modal
         visible={open}
@@ -41,9 +43,16 @@ export function ResponsiveDialog({
         onRequestClose={() => onOpenChange(false)}
         statusBarTranslucent
       >
+        {/*
+          KeyboardAvoidingView must wrap the entire modal content.
+          - iOS: 'padding' shifts content up by keyboard height
+          - Android: 'height' reduces available height so content scrolls above keyboard
+          keyboardVerticalOffset accounts for the status bar on iOS notch devices.
+        */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           <YStack
             flex={1}
@@ -55,7 +64,7 @@ export function ResponsiveDialog({
               bg="$color2"
               borderTopLeftRadius={24}
               borderTopRightRadius={24}
-              style={{ maxHeight: '95%' }}
+              style={{ maxHeight: screenHeight * 0.92 }}
             >
               {/* Drag handle indicator */}
               <XStack justify="center" pt="$3" pb="$2">
@@ -95,12 +104,16 @@ export function ResponsiveDialog({
                 </Button>
               </XStack>
 
-              {/* Content — scrollable */}
+              {/* Content — scrollable, fills remaining space above keyboard ONLY when needed */}
               <ScrollView
-                showsVerticalScrollIndicator
-                contentContainerStyle={{ padding: 16, paddingBottom: Math.max(insets.bottom + 16, 40) } as any}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{
+                  padding: 16,
+                  paddingBottom: Math.max(insets.bottom + 24, 40),
+                } as any}
                 keyboardShouldPersistTaps="handled"
-                style={{ flexGrow: 0, flexShrink: 1 }}
+                // flexShrink: 1 ensures it wraps content but shrinks when keyboard appears
+                style={{ flexShrink: 1 }}
               >
                 {children}
               </ScrollView>
@@ -158,7 +171,7 @@ export function ResponsiveDialog({
           </XStack>
           <ScrollView
             showsVerticalScrollIndicator
-            style={{ flex: 1 }}
+            style={{ flexShrink: 1 }}
             contentContainerStyle={{ paddingBottom: 24 } as any}
             keyboardShouldPersistTaps="handled"
           >

@@ -1,9 +1,10 @@
+import { AppInput, AppTextArea } from 'components/ui/AppInput'
 import { useEffect, useState } from 'react'
 import { Image, Alert, Platform } from 'react-native'
 import { Plus, Save, Trash2, X, Camera } from '@tamagui/lucide-icons-2'
 import { useMutation, useQuery } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
-import { Button, Input, Paragraph, ScrollView, Spinner, TextArea, XStack, YStack, useMedia } from 'tamagui'
+import { Button,  Paragraph, ScrollView, Spinner,  XStack, YStack, useMedia } from 'tamagui'
 import { convexApi } from 'lib/convex'
 import { CategoryNode, getSubcategoryOptions } from 'lib/categories'
 import { getErrorMessage } from 'lib/errors'
@@ -341,7 +342,7 @@ export function ProductEditorDialog({
             {/* Right: name + category + status */}
             <YStack flex={1} gap="$3" style={{ minWidth: 260 }}>
               <FormField label="Product name *">
-                <Input
+                <AppInput
                   value={name}
                   onChangeText={setName}
                   placeholder="Krishna Mukut, Mala, etc."
@@ -377,7 +378,7 @@ export function ProductEditorDialog({
               <XStack gap="$3" flexWrap="wrap">
                 <YStack flex={2} style={{ minWidth: 160 }}>
                   <FormField label="Tags">
-                    <Input value={merchandisingTags} onChangeText={setMerchandisingTags} placeholder="festival, premium" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" />
+                    <AppInput value={merchandisingTags} onChangeText={setMerchandisingTags} placeholder="festival, premium" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" />
                   </FormField>
                 </YStack>
                 <YStack flex={1} style={{ minWidth: 120 }}>
@@ -402,12 +403,12 @@ export function ProductEditorDialog({
           <XStack gap="$4" flexWrap="wrap">
             <YStack flex={1} style={{ minWidth: 260 }}>
               <FormField label="Description">
-                <TextArea value={description} onChangeText={setDescription} placeholder="Material, size, cultural significance…" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" py="$2" style={{ minHeight: 80 }} />
+                <AppTextArea value={description} onChangeText={setDescription} placeholder="Material, size, cultural significance…" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" py="$2" style={{ minHeight: 80 }} />
               </FormField>
             </YStack>
             <YStack flex={1} style={{ minWidth: 260 }}>
               <FormField label="Brand copy">
-                <TextArea value={brandCopy} onChangeText={setBrandCopy} placeholder="Branded tagline" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" py="$2" style={{ minHeight: 80 }} />
+                <AppTextArea value={brandCopy} onChangeText={setBrandCopy} placeholder="Branded tagline" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" py="$2" style={{ minHeight: 80 }} />
               </FormField>
             </YStack>
           </XStack>
@@ -415,7 +416,7 @@ export function ProductEditorDialog({
           {notes || productId ? (
             <YStack mt="$3">
               <FormField label="Internal notes">
-                <Input value={notes} onChangeText={setNotes} placeholder="Private notes" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" />
+                <AppInput value={notes} onChangeText={setNotes} placeholder="Private notes" bg="$color3" borderWidth={1} borderColor="$borderColor" px="$3" />
               </FormField>
             </YStack>
           ) : null}
@@ -442,7 +443,7 @@ export function ProductEditorDialog({
                 <XStack gap="$3" flexWrap="wrap" items="flex-start">
                   <YStack flex={2} style={{ minWidth: 160 }}>
                     <FormField label={`Variant ${idx + 1} Label`}>
-                      <Input
+                      <AppInput
                         value={v.label}
                         onChangeText={(val) => updateVariant(idx, { label: val })}
                         placeholder="E.g. Large Red"
@@ -457,7 +458,7 @@ export function ProductEditorDialog({
                     <FormField label="Sale Price">
                       <XStack items="center" bg="$color3" rounded="$3" borderWidth={1} borderColor="$borderColor" px="$3" height={44}>
                         <Paragraph color="$color8" fontSize="$3" fontWeight="600">₹</Paragraph>
-                        <Input
+                        <AppInput
                           flex={1}
                           value={v.salePrice}
                           onChangeText={(val) => updateVariant(idx, { salePrice: val })}
@@ -473,7 +474,7 @@ export function ProductEditorDialog({
                   </YStack>
                   <YStack flex={1} style={{ minWidth: 140 }}>
                     <FormField label="Barcode">
-                      <Input
+                      <AppInput
                         value={v.barcode}
                         onChangeText={(val) => updateVariant(idx, { barcode: val })}
                         placeholder="Scan or type"
@@ -489,7 +490,7 @@ export function ProductEditorDialog({
                 <XStack gap="$3" flexWrap="wrap" items="flex-start">
                   <YStack flex={1} style={{ minWidth: 120 }}>
                     <FormField label="Reorder Thr.">
-                      <Input
+                      <AppInput
                         value={v.reorderThreshold}
                         onChangeText={(val) => updateVariant(idx, { reorderThreshold: val })}
                         keyboardType="numeric"
@@ -503,7 +504,7 @@ export function ProductEditorDialog({
                   </YStack>
                   <YStack flex={1} style={{ minWidth: 120 }}>
                     <FormField label={v.variantId ? 'On Hand' : 'Opening Qty'}>
-                      <Input
+                      <AppInput
                         value={v.openingQuantity}
                         onChangeText={(val) => updateVariant(idx, { openingQuantity: val })}
                         keyboardType="numeric"
@@ -519,7 +520,7 @@ export function ProductEditorDialog({
                   </YStack>
                   <YStack flex={2} style={{ minWidth: 200 }}>
                     <FormField label="Attributes (One per line: 'Name: Value')">
-                      <TextArea
+                      <AppTextArea
                         value={v.attributesText}
                         onChangeText={(val) => updateVariant(idx, { attributesText: val })}
                         placeholder={'Color: Red\nMaterial: Pearl'}

@@ -1,8 +1,9 @@
+import { AppInput, AppTextArea } from 'components/ui/AppInput'
 import { useEffect, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronDown, ChevronRight, Plus, Save, Trash2 } from '@tamagui/lucide-icons-2'
 import { useMutation, useQuery } from 'convex/react'
-import { Button, Input, Paragraph, Spinner, XStack, YStack, useMedia } from 'tamagui'
+import { Button,  Paragraph, Spinner, XStack, YStack, useMedia } from 'tamagui'
 import { convexApi } from 'lib/convex'
 import { Id } from 'convex/_generated/dataModel'
 import { getErrorMessage } from 'lib/errors'
@@ -151,7 +152,7 @@ export function SettingsScreen() {
 
       <ResponsiveDialog open={editorOpen} onOpenChange={setEditorOpen} title={form.categoryId ? 'Edit category' : 'Create category'}>
         <YStack gap="$3" py="$2">
-          <FormField label="Name"><Input value={form.name} onChangeText={(n) => setForm((c) => ({ ...c, name: n }))} placeholder="e.g. Crowns" bg="$color3" borderWidth={0} px="$4" /></FormField>
+          <FormField label="Name"><AppInput value={form.name} onChangeText={(n) => setForm((c) => ({ ...c, name: n }))} placeholder="e.g. Crowns" bg="$color3" borderWidth={0} px="$4" /></FormField>
           <SelectionField label="Parent" value={form.parentCategoryId} placeholder="Top level" description="Leave empty for top-level." options={[{ label: 'Top level', value: null }, ...(categories ?? []).filter(c => c._id !== form.categoryId).map((c) => ({ label: c.name, value: c._id }))]} onChange={(v) => setForm((c) => ({ ...c, parentCategoryId: v }))} />
           <FormField label="Status">
             <XStack bg="$color2" rounded="$3" p="$0.5" borderWidth={1} borderColor="$borderColor">

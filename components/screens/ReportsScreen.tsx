@@ -1,3 +1,4 @@
+import { AppInput, AppTextArea } from 'components/ui/AppInput'
 import { useEffect, useMemo, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useAction, usePaginatedQuery, useQuery } from 'convex/react'
@@ -13,7 +14,7 @@ import {
   RotateCcw,
   TrendingUp,
 } from '@tamagui/lucide-icons-2'
-import { Button, Input, Paragraph, ScrollView, Spinner, XStack, YStack, useMedia } from 'tamagui'
+import { Button,  Paragraph, ScrollView, Spinner, XStack, YStack, useMedia } from 'tamagui'
 import type { ColorTokens } from 'tamagui'
 import type { DimensionValue } from 'react-native'
 import { convexApi } from 'lib/convex'
@@ -667,8 +668,8 @@ export function ReportsScreen() {
         </XStack>
         {datePreset === 'custom' ? (
           <XStack gap="$2">
-            <Input value={fromDate} onChangeText={setFromDate} placeholder="From YYYY-MM-DD" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
-            <Input value={toDate} onChangeText={setToDate} placeholder="To YYYY-MM-DD" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
+            <AppInput value={fromDate} onChangeText={setFromDate} placeholder="From YYYY-MM-DD" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
+            <AppInput value={toDate} onChangeText={setToDate} placeholder="To YYYY-MM-DD" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
           </XStack>
         ) : null}
       </YStack>

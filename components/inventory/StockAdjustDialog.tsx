@@ -1,7 +1,8 @@
+import { AppInput, AppTextArea } from 'components/ui/AppInput'
 import { useEffect, useState } from 'react'
 import { useMutation } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
-import { Button, Input, Paragraph, TextArea, XStack, YStack } from 'tamagui'
+import { Button,  Paragraph,  XStack, YStack } from 'tamagui'
 import { convexApi } from 'lib/convex'
 import { Id } from 'convex/_generated/dataModel'
 import { getErrorMessage } from 'lib/errors'
@@ -126,7 +127,7 @@ export function StockAdjustDialog({
         <XStack gap="$2">
           <YStack flex={1}>
             <FormField label="Quantity ±" description="Positive = intake, negative = deduction">
-              <Input
+              <AppInput
                 value={quantityDelta}
                 onChangeText={setQuantityDelta}
                 keyboardType="numeric"
@@ -140,7 +141,7 @@ export function StockAdjustDialog({
           </YStack>
           <YStack flex={1}>
             <FormField label="Reason *">
-              <Input
+              <AppInput
                 value={reason}
                 onChangeText={setReason}
                 placeholder="New batch, correction…"
@@ -156,7 +157,7 @@ export function StockAdjustDialog({
         <XStack gap="$2">
           <YStack flex={1}>
             <FormField label="Purchase date" description="When stock was bought">
-              <Input
+              <AppInput
                 value={purchaseDate}
                 onChangeText={setPurchaseDate}
                 placeholder="YYYY-MM-DD"
@@ -168,7 +169,7 @@ export function StockAdjustDialog({
           </YStack>
           <YStack flex={1}>
             <FormField label="Bought from" description="Seller / supplier name">
-              <Input
+              <AppInput
                 value={seller}
                 onChangeText={setSeller}
                 placeholder="Supplier name"
@@ -181,7 +182,7 @@ export function StockAdjustDialog({
         </XStack>
 
         <FormField label="Note">
-          <TextArea
+          <AppTextArea
             value={note}
             onChangeText={setNote}
             placeholder="Optional extra details"

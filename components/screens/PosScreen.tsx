@@ -1,3 +1,4 @@
+import { AppInput, AppTextArea } from 'components/ui/AppInput'
 import { useEffect, useMemo, useState } from 'react'
 import { Platform } from 'react-native'
 import { useRouter } from 'expo-router'
@@ -5,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ScanBarcode, Minus, Plus, ReceiptText, Search, ShoppingCart, Trash2, X, SlidersHorizontal } from '@tamagui/lucide-icons-2'
 import { useConvex, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { useToastController } from '@tamagui/toast'
-import { Button, Input, Paragraph, ScrollView, Spinner, XStack, YStack, useMedia, useTheme } from 'tamagui'
+import { Button,  Paragraph, ScrollView, Spinner, XStack, YStack, useMedia, useTheme } from 'tamagui'
 import QRCode from 'react-native-qrcode-svg'
 import { convexApi } from 'lib/convex'
 import { CategoryNode, getSubcategoryOptions } from 'lib/categories'
@@ -424,7 +425,7 @@ export function PosScreen() {
                 <XStack items="center" gap="$2">
                   <XStack items="center" bg="$color3" rounded="$5" borderWidth={1} borderColor="$borderColor" px="$2">
                     <Paragraph color="$color10" fontSize="$1">Disc ₹</Paragraph>
-                    <Input
+                    <AppInput
                       value={line.lineDiscount}
                       onChangeText={(value) => setCart((current) => current.map((item) => item.variantId === line.variantId ? { ...item, lineDiscount: value } : item))}
                       keyboardType="numeric"
@@ -450,8 +451,8 @@ export function PosScreen() {
       <SectionCard p="$3">
         <Paragraph color="$color12" fontSize="$3" fontWeight="800" mb="$2">Customer & Payment</Paragraph>
         <XStack gap="$2" flexWrap="wrap">
-          <Input flex={1} size="$3" value={customerName} onChangeText={setCustomerName} placeholder="Customer name" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
-          <Input flex={1} size="$3" value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" keyboardType="phone-pad" />
+          <AppInput flex={1} size="$3" value={customerName} onChangeText={setCustomerName} placeholder="Customer name" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" />
+          <AppInput flex={1} size="$3" value={customerPhone} onChangeText={setCustomerPhone} placeholder="Phone" bg="$color3" borderWidth={1} borderColor="$borderColor" color="$color12" keyboardType="phone-pad" />
         </XStack>
         <XStack gap="$2" mt="$2">
           <Button flex={1} size="$3" bg={paymentMethod === 'cash' ? '$color4' : '$color3'} borderWidth={1} borderColor={paymentMethod === 'cash' ? '$accentBackground' : '$borderColor'} onPress={() => setPaymentMethod('cash')}>
@@ -468,7 +469,7 @@ export function PosScreen() {
           <Paragraph color="$color10" fontSize="$2">Order discount</Paragraph>
           <XStack items="center" gap="$1" bg="$color3" rounded="$5" borderWidth={1} borderColor="$borderColor" px="$2">
             <Paragraph color="$color10" fontSize="$1">₹</Paragraph>
-            <Input value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" bg="transparent" borderWidth={0} width={60} color="$color12" />
+            <AppInput value={orderDiscount} onChangeText={setOrderDiscount} keyboardType="numeric" bg="transparent" borderWidth={0} width={60} color="$color12" />
           </XStack>
         </XStack>
         <XStack justify="space-between" mt="$2"><Paragraph color="$color10" fontSize="$3">Subtotal</Paragraph><Paragraph color="$color12" fontWeight="700">{formatCurrency(preview?.summary.subtotal ?? 0)}</Paragraph></XStack>
@@ -513,7 +514,7 @@ export function PosScreen() {
 
             <XStack items="center" gap="$2" bg="$color2" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">
               <Search size={16} color="$color10" />
-              <Input value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
+              <AppInput value={search} onChangeText={setSearch} placeholder="Search products, code, barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
               {Platform.OS !== 'web' ? (
                 <Button size="$2.5" theme="accent" icon={<ScanBarcode size={14} />} onPress={() => setScannerOpen(true)} />
               ) : null}
@@ -583,7 +584,7 @@ export function PosScreen() {
               <YStack gap="$3">
                 <XStack items="center" gap="$2" bg="$color3" borderWidth={1} borderColor="$borderColor" rounded="$6" px="$3">
                   <Search size={16} color="$color8" />
-                  <Input value={search} onChangeText={setSearch} placeholder="Search products, codes, or barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
+                  <AppInput value={search} onChangeText={setSearch} placeholder="Search products, codes, or barcode" flex={1} bg="transparent" borderWidth={0} px="$0" color="$color12" />
                 </XStack>
                 <XStack gap="$2" flexWrap="wrap">
                   <SectionCard flex={1} p="$3">
